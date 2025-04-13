@@ -1,4 +1,3 @@
-// src/pages/AccountSettings.tsx
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";

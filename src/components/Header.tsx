@@ -75,7 +75,7 @@ export default function Header() {
             Profile
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-auto">
           {/* User email as first item */}
           {userEmail && (
             <div className="px-2 py-1.5 text-sm font-medium text-gray-700">
