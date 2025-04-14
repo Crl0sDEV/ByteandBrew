@@ -18,9 +18,12 @@ import { CoffeeIcon } from "../components/admin/CoffeeIcon";
 export default function AdminDashboard() {
   const user = useUser();
   const [activeTab, setActiveTab] = useState("transactions");
-  
+
   const { stats, loading: statsLoading } = useAdminStats(user);
-  const { transactions, loading: transactionsLoading } = useTransactions(user, activeTab);
+  const { transactions, loading: transactionsLoading } = useTransactions(
+    user,
+    activeTab
+  );
   const { members, loading: membersLoading } = useMembers(user, activeTab);
   const { cards, loading: cardsLoading } = useCards(user, activeTab);
   const { rewards, loading: rewardsLoading } = useRewards(user, activeTab);
@@ -32,18 +35,27 @@ export default function AdminDashboard() {
   return (
     <div className="p-4 md:p-8">
       <Header />
-      
+
       <div className="mt-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage loyalty cards, transactions, rewards, and products</p>
+          <p className="text-muted-foreground">
+            Manage loyalty cards, transactions, rewards, and products
+          </p>
         </div>
 
         <StatCards stats={stats} />
 
-        <Tabs defaultValue="transactions" onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          defaultValue="transactions"
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <TabsTrigger value="transactions" className="flex items-center gap-2">
+            <TabsTrigger
+              value="transactions"
+              className="flex items-center gap-2"
+            >
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Transactions</span>
             </TabsTrigger>
@@ -70,7 +82,10 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="transactions" className="pt-4">
-            <TransactionsTab transactions={transactions} loading={transactionsLoading} />
+            <TransactionsTab
+              transactions={transactions}
+              loading={transactionsLoading}
+            />
           </TabsContent>
 
           <TabsContent value="members" className="pt-4">
@@ -78,11 +93,29 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="loyalty" className="pt-4 space-y-4">
-            <LoyaltyTab cards={cards} loading={cardsLoading} />
+            <LoyaltyTab
+              cards={cards}
+              members={members}
+              loading={cardsLoading}
+              onCardRegister={async () => {}}
+              onCardReload={async () => {}}
+              onCardDeactivate={async () => {}}
+            />
           </TabsContent>
 
           <TabsContent value="rewards" className="pt-4">
             <RewardsTab rewards={rewards} loading={rewardsLoading} />
+          </TabsContent>
+          <TabsContent value="products" className="pt-4">
+            <div className="text-muted-foreground">
+              Products management coming soon...
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="pt-4">
+            <div className="text-muted-foreground">
+              Settings configuration coming soon...
+            </div>
           </TabsContent>
         </Tabs>
       </div>
