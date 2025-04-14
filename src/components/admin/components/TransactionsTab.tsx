@@ -44,6 +44,7 @@ export function TransactionsTab({ transactions, loading }: TransactionsTabProps)
               <TableHead>Customer</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Items</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Date</TableHead>
             </TableRow>
@@ -56,6 +57,7 @@ export function TransactionsTab({ transactions, loading }: TransactionsTabProps)
                   <TableCell>{t.user?.full_name || 'Anonymous'}</TableCell>
                   <TableCell>₱{t.amount.toFixed(2)}</TableCell>
                   <TableCell>{t.item_count || 0}</TableCell>
+                  <TableCell>{t.type}</TableCell>
                   <TableCell>
                     <Badge variant={t.status === 'Completed' ? 'default' : 'outline'}>
                       {t.status}

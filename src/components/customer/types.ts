@@ -14,6 +14,7 @@ export interface CustomerData {
     date: string;
     amount: string;
     items: number;
+    type: string;
     status: string;
     pointsEarned: number;
   }

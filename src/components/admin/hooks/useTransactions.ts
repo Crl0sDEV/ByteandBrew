@@ -18,6 +18,7 @@ export function useTransactions(user: any, activeTab: string) {
             id,
             amount,
             item_count,
+            type,
             status,
             created_at,
             card_id,

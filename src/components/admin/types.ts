@@ -18,9 +18,11 @@ export interface Profile {
   }
   
   export interface Transaction {
+    type: ReactNode;
     id: string;
     amount: number;
     item_count: number;
+    type: string;
     status: string;
     created_at: string;
     card_id: string;

@@ -12,7 +12,7 @@ export function TransactionsSection({ transactions }: TransactionsSectionProps) 
     <UICard>
       <CardHeader>
         <CardTitle>Recent Transactions</CardTitle>
-        <CardDescription>Your purchase history</CardDescription>
+        <CardDescription>Your purchase and balance history</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -21,6 +21,7 @@ export function TransactionsSection({ transactions }: TransactionsSectionProps) 
               <TableHead>Date</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Items</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Points</TableHead>
               <TableHead className="text-right">Status</TableHead>
             </TableRow>
@@ -32,6 +33,7 @@ export function TransactionsSection({ transactions }: TransactionsSectionProps) 
                   <TableCell>{t.date}</TableCell>
                   <TableCell>₱{t.amount}</TableCell>
                   <TableCell>{t.items}</TableCell>
+                  <TableCell>{t.type}</TableCell>
                   <TableCell>+{t.pointsEarned}</TableCell>
                   <TableCell className="text-right">
                     <Badge variant="outline">{t.status}</Badge>

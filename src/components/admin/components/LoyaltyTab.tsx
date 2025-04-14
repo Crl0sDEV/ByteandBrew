@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { RFIDScanner } from "./RFIDScanner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
+import { ReloadCardDialog } from "./ReloadCardDialog";
 
 // Define the onCardRegister function
 const onCardRegister = async (uid: string, userId: string) => {
@@ -42,20 +43,65 @@ const onCardRegister = async (uid: string, userId: string) => {
     return data;
   };
 
-interface LoyaltyTabProps {
-  cards: Card[];
-  members: Profile[];
-  loading: boolean;
-  onCardRegister: (uid: string, userId: string) => Promise<void>;
-  onCardReload: (cardId: string, amount: number) => Promise<void>;
-  onCardDeactivate: (cardId: string) => Promise<void>;
-}
+  const onCardReload = async (cardId: string, amount: number) => {
+    try {
+      // First get the current balance
+      const { data: cardData, error: fetchError } = await supabase
+        .from('cards')
+        .select('balance')
+        .eq('id', cardId)
+        .single();
+  
+      if (fetchError) throw fetchError;
+      if (!cardData) throw new Error('Card not found');
+  
+      const currentBalance = cardData.balance;
+      const newBalance = currentBalance + amount;
+  
+      // Then update the balance
+      const { data, error } = await supabase
+        .from('cards')
+        .update({ balance: newBalance })
+        .eq('id', cardId)
+        .select();
+  
+      if (error) throw error;
+  
+      // Create a transaction record (optional but recommended)
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          card_id: cardId,
+          amount: amount,
+          type: 'reload',
+          status: 'completed'
+        });
+  
+      if (transactionError) {
+        console.error('Failed to create transaction record:', transactionError);
+        // Don't throw error here as the reload was successful
+      }
+  
+      return data;
+    } catch (error) {
+      console.error('Error reloading card:', error);
+      throw error;
+    }
+  };  
+
+  interface LoyaltyTabProps {
+    cards: Card[];
+    members: Profile[];
+    loading: boolean;
+    onCardRegister: (uid: string, userId: string) => Promise<void>;
+    onCardReload: (cardId: string, amount: number) => Promise<void>;
+    onCardDeactivate: (cardId: string) => Promise<void>;
+  }
 
 export function LoyaltyTab({ 
   cards, 
   members, 
-  loading, 
-  onCardReload, 
+  loading,  
   onCardDeactivate 
 }: LoyaltyTabProps) {
   const [action, setAction] = useState<'issue' | 'reload' | 'deactivate' | null>(null);
@@ -75,6 +121,18 @@ export function LoyaltyTab({
     card.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
     card.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const MAX_RELOAD_AMOUNT = 10000; 
+  const [showConfirmation, setShowConfirmation] = useState(false);
+const [pendingReload, setPendingReload] = useState<{cardId: string, amount: number} | null>(null);
 
   const handleScan = (uid: string) => {
     setScannedUid(uid);
@@ -115,25 +173,62 @@ export function LoyaltyTab({
     
     const amount = parseFloat(reloadAmount);
     if (isNaN(amount)) {
-        toast.error("Please enter a valid number for reload amount", {
-            description: "Invalid Amount",
-          });
-          
+      toast.error("Please enter a valid number for reload amount", {
+        description: "Invalid Amount",
+      });
       return;
     }
-
+  
+    if (amount <= 0) {
+      toast.error("Reload amount must be positive", {
+        description: "Invalid Amount",
+      });
+      return;
+    }
+  
+    if (amount > MAX_RELOAD_AMOUNT) {
+      toast.error(`Maximum reload amount is ${formatCurrency(MAX_RELOAD_AMOUNT)}`, {
+        description: "Amount Too Large",
+      });
+      return;
+    }
+  
+    // Show confirmation for amounts over 1000
+    if (amount > 1000) {
+      setPendingReload({
+        cardId: selectedCard.id,
+        amount
+      });
+      setShowConfirmation(true);
+      return;
+    }
+  
+    await performReload(selectedCard.id, amount);
+  };
+  
+  // Add this new function
+  const performReload = async (cardId: string, amount: number) => {
     try {
-      await onCardReload(selectedCard.id, amount);
+
+      await onCardReload(cardId, amount);
       toast.success("Card Reloaded", {
-        description: `₱${amount.toFixed(2)} added to card ${selectedCard.uid}`,
-      });      
+        description: `₱${amount.toFixed(2)} added to card ${selectedCard?.uid}`,
+        action: {
+          label: "View Card",
+          onClick: () => setSelectedCard(selectedCard),
+        },
+      });
       resetState();
     } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not reload card", {
-            description: "Reload Failed",
-          });
+      toast.error(error instanceof Error ? error.message : "Could not reload card", {
+        description: "Reload Failed",
+      });
+    } finally {
+      setPendingReload(null);
+      setShowConfirmation(false);
     }
   };
+  
 
   const handleDeactivateCard = async () => {
     if (!selectedCard) return;
@@ -288,53 +383,25 @@ export function LoyaltyTab({
             </>
           )}
 
-          {action === 'reload' && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Reload Card Balance</DialogTitle>
-                <DialogDescription>
-                  Add balance to an existing loyalty card
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <RFIDScanner onScan={handleScan} />
-                
-                {selectedCard ? (
-                  <div className="p-3 border rounded-lg space-y-2">
-                    <p className="font-medium">Selected Card: {selectedCard.uid}</p>
-                    <p>Current Balance: ₱{selectedCard.balance.toFixed(2)}</p>
-                    <p>Member: {selectedCard.profiles?.full_name || 'No member'}</p>
-                  </div>
-                ) : scannedUid ? (
-                  <p className="text-red-500">Card not found. Please scan a registered card.</p>
-                ) : null}
-
-                <div className="space-y-2">
-                  <Label>Reload Amount (₱)</Label>
-                  <Input
-                    type="number"
-                    value={reloadAmount}
-                    onChange={(e) => setReloadAmount(e.target.value)}
-                    placeholder="Enter amount"
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={resetState}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleReloadCard}
-                  disabled={!selectedCard}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reload Card
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+{action === 'reload' && (
+  <>
+    <DialogHeader>
+      <DialogTitle>Reload Card Balance</DialogTitle>
+      <DialogDescription>
+        Add balance to an existing loyalty card
+      </DialogDescription>
+    </DialogHeader>
+    <ReloadCardDialog
+      scannedUid={scannedUid}
+      onScan={handleScan}
+      selectedCard={selectedCard}
+      reloadAmount={reloadAmount}
+      setReloadAmount={setReloadAmount}
+      onReloadCard={handleReloadCard}
+      onClose={resetState}
+    />
+  </>
+)}
 
           {action === 'deactivate' && (
             <>
@@ -381,6 +448,30 @@ export function LoyaltyTab({
           )}
         </DialogContent>
       </Dialog>
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Large Reload</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to reload ₱{pendingReload?.amount.toFixed(2)} to this card?
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setShowConfirmation(false)}>
+        Cancel
+      </Button>
+      <Button 
+        onClick={() => {
+          if (pendingReload) {
+            performReload(pendingReload.cardId, pendingReload.amount);
+          }
+        }}
+      >
+        Confirm Reload
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Cards Table */}
       <UICard>
@@ -420,7 +511,7 @@ export function LoyaltyTab({
                   >
                     <TableCell>{card.uid}</TableCell>
                     <TableCell>{card.profiles?.full_name || 'No member'}</TableCell>
-                    <TableCell>₱{card.balance.toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(card.balance)}</TableCell>
                     <TableCell>{card.points}</TableCell>
                     <TableCell>
                       <Badge variant={card.status === 'active' ? 'default' : 'destructive'}>
