@@ -56,7 +56,7 @@ export default function Header() {
   };
 
   return (
-    <header className="w-full px-6 py-4 bg-white shadow flex justify-between items-center">
+    <header className=" sticky top-0 z-50 w-full px-6 py-4 bg-white shadow flex justify-between items-center">
       {/* Left: Logo & Name */}
       <div className="flex items-center space-x-2">
         <img

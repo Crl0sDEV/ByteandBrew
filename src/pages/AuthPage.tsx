@@ -30,7 +30,7 @@ export default function AuthPage() {
       if (data.user) {
         await supabase
           .from("profiles")
-          .insert([{ id: data.user.id, role: "customer" }]);
+          .insert([{ id: data.user.id, email, role: "customer" }]);
 
         toast.success("Registration successful! Please check your email.");
       }

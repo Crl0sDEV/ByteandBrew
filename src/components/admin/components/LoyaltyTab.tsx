@@ -6,7 +6,7 @@ import { Card, Profile } from "../types";
 import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, RefreshCw, XCircle, User, Check, X } from "lucide-react";
+import { PlusCircle, RefreshCw, XCircle, User, Check, X, Scan } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import { RFIDScanner } from "./RFIDScanner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
 import { ReloadCardDialog } from "./ReloadCardDialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Define the onCardRegister function
 const onCardRegister = async (uid: string, userId: string) => {
@@ -89,6 +90,50 @@ const onCardRegister = async (uid: string, userId: string) => {
     }
   };  
 
+  const onCardDeactivate = async (cardId: string) => {
+    try {
+      // First check if card exists and is active
+      const { data: cardData, error: fetchError } = await supabase
+        .from('cards')
+        .select('status')
+        .eq('id', cardId)
+        .single();
+  
+      if (fetchError) throw fetchError;
+      if (!cardData) throw new Error('Card not found');
+      if (cardData.status !== 'active') throw new Error('Card is already inactive');
+  
+      // Update card status to inactive
+      const { data, error } = await supabase
+        .from('cards')
+        .update({ status: 'inactive' })
+        .eq('id', cardId)
+        .select();
+  
+      if (error) throw error;
+  
+      // Create a deactivation record (optional but recommended)
+      const { error: deactivationError } = await supabase
+        .from('card_deactivations')
+        .insert({
+          card_id: cardId,
+          deactivated_at: new Date().toISOString(),
+          reason: 'manual_deactivation'
+        });
+  
+      if (deactivationError) {
+        console.error('Failed to create deactivation record:', deactivationError);
+        // Don't throw error here as the deactivation was successful
+      }
+  
+      return data;
+    } catch (error) {
+      console.error('Error deactivating card:', error);
+      throw error;
+    }
+  };
+  
+
   interface LoyaltyTabProps {
     cards: Card[];
     members: Profile[];
@@ -102,7 +147,6 @@ export function LoyaltyTab({
   cards, 
   members, 
   loading,  
-  onCardDeactivate 
 }: LoyaltyTabProps) {
   const [action, setAction] = useState<'issue' | 'reload' | 'deactivate' | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
@@ -110,11 +154,25 @@ export function LoyaltyTab({
   const [scannedUid, setScannedUid] = useState<string | null>(null);
   const [reloadAmount, setReloadAmount] = useState<string>("100");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectionMethod, setSelectionMethod] = useState<'member' | 'scan'>('member');
 
   // Filter members without cards
   const membersWithoutCards = (members ?? []).filter(member =>
     !(cards ?? []).some(card => card.user_id === member.id)
   );  
+  // Filter members with cards
+  const membersWithCards = (members ?? []).filter(member =>
+    (cards ?? []).some(card => card.user_id === member.id)
+  );
+
+  const handleMemberSelect = (memberId: string) => {
+    const member = membersWithCards.find(m => m.id === memberId);
+    setSelectedMember(member || null);
+    
+    // Find the member's card
+    const memberCard = cards.find(card => card.user_id === memberId);
+    setSelectedCard(memberCard || null);
+  };
 
   // Filter cards based on search term
   const filteredCards = cards.filter(card => 
@@ -133,6 +191,9 @@ export function LoyaltyTab({
   const MAX_RELOAD_AMOUNT = 10000; 
   const [showConfirmation, setShowConfirmation] = useState(false);
 const [pendingReload, setPendingReload] = useState<{cardId: string, amount: number} | null>(null);
+
+const [deactivationReason, setDeactivationReason] = useState('lost');
+const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
 
   const handleScan = (uid: string) => {
     setScannedUid(uid);
@@ -237,16 +298,20 @@ const [pendingReload, setPendingReload] = useState<{cardId: string, amount: numb
       await onCardDeactivate(selectedCard.id);
       toast.success("Card Deactivated", {
         description: `Card ${selectedCard.uid} has been deactivated`,
+        action: {
+          label: "View Card",
+          onClick: () => setSelectedCard(selectedCard),
+        },
       });
       
       resetState();
     } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not deactivate card", {
-            description: "Deactivation Failed",
-          });
-          
+      toast.error(error instanceof Error ? error.message : "Could not deactivate card", {
+        description: "Deactivation Failed",
+      });
     }
   };
+  
 
   const resetState = () => {
     setAction(null);
@@ -392,18 +457,21 @@ const [pendingReload, setPendingReload] = useState<{cardId: string, amount: numb
       </DialogDescription>
     </DialogHeader>
     <ReloadCardDialog
-      scannedUid={scannedUid}
-      onScan={handleScan}
-      selectedCard={selectedCard}
-      reloadAmount={reloadAmount}
-      setReloadAmount={setReloadAmount}
-      onReloadCard={handleReloadCard}
-      onClose={resetState}
-    />
+  scannedUid={scannedUid}
+  onScan={handleScan}
+  selectedCard={selectedCard}
+  selectedMember={selectedMember}
+  membersWithCards={membersWithCards}
+  reloadAmount={reloadAmount}
+  setReloadAmount={setReloadAmount}
+  onReloadCard={handleReloadCard}
+  onClose={resetState}
+  onMemberSelect={handleMemberSelect}
+/>
   </>
 )}
 
-          {action === 'deactivate' && (
+{action === 'deactivate' && (
             <>
               <DialogHeader>
                 <DialogTitle>Deactivate Card</DialogTitle>
@@ -412,40 +480,128 @@ const [pendingReload, setPendingReload] = useState<{cardId: string, amount: numb
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4">
-                <RFIDScanner onScan={handleScan} />
-                
-                {selectedCard && (
-                  <div className="p-3 border rounded-lg space-y-2">
-                    <p className="font-medium">Selected Card: {selectedCard.uid}</p>
-                    <p>Current Status: 
-                      <Badge variant={selectedCard.status === 'active' ? 'default' : 'destructive'} className="ml-2">
-                        {selectedCard.status}
-                      </Badge>
-                    </p>
-                    <p>Member: {selectedCard.profiles?.full_name || 'No member'}</p>
-                    {selectedCard.status !== 'active' && (
-                      <p className="text-yellow-600">This card is already deactivated</p>
-                    )}
+              <Tabs 
+                value={selectionMethod} 
+                onValueChange={(value) => setSelectionMethod(value as 'member' | 'scan')}
+                className="mb-4"
+              >
+                <TabsList>
+                  <TabsTrigger value="member">
+                    <User className="h-4 w-4 mr-2" />
+                    Select Member
+                  </TabsTrigger>
+                  <TabsTrigger value="scan">
+                    <Scan className="h-4 w-4 mr-2" />
+                    Scan Card
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {selectionMethod === 'member' ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Select Member</Label>
+                    <Select
+                      value={selectedMember?.id || ""}
+                      onValueChange={handleMemberSelect}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a member">
+                          {selectedMember ? selectedMember.full_name : "Select member"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {membersWithCards.length > 0 ? (
+                          membersWithCards.map(member => (
+                            <SelectItem key={member.id} value={member.id}>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                {member.full_name}
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="text-sm text-muted-foreground p-2">
+                            No members with cards available
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-              </div>
+
+                  {selectedCard && (
+                    <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
+                      <p className="font-medium">Card Details</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Card ID</p>
+                          <p>{selectedCard.uid}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Current Balance</p>
+                          <p>{formatCurrency(selectedCard.balance)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Status</p>
+                          <Badge variant={selectedCard.status === 'active' ? 'default' : 'destructive'}>
+                            {selectedCard.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <RFIDScanner onScan={handleScan} />
+                  {scannedUid && !selectedCard && (
+                    <p className="text-red-500">Card not found. Please scan a registered card.</p>
+                  )}
+                </div>
+              )}
+
+              {selectedCard && (
+                <div className="space-y-2">
+                  <Label>Reason for Deactivation</Label>
+                  <Select
+                    value={deactivationReason}
+                    onValueChange={setDeactivationReason}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lost">Lost</SelectItem>
+                      <SelectItem value="stolen">Stolen</SelectItem>
+                      <SelectItem value="damaged">Damaged</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <DialogFooter>
                 <Button variant="outline" onClick={resetState}>
                   Cancel
                 </Button>
                 <Button 
-                  variant="destructive"
-                  onClick={handleDeactivateCard}
-                  disabled={!selectedCard || selectedCard.status !== 'active'}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Deactivate Card
-                </Button>
+  variant="destructive"
+  onClick={() => {
+    if (selectedCard && selectedCard.balance > 0) {
+      setShowDeactivateConfirm(true);
+    } else {
+      handleDeactivateCard();
+    }
+  }}
+  disabled={!selectedCard || selectedCard.status !== 'active'}
+>
+  <X className="mr-2 h-4 w-4" />
+  Deactivate Card
+</Button>
               </DialogFooter>
             </>
           )}
+
         </DialogContent>
       </Dialog>
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
@@ -468,6 +624,26 @@ const [pendingReload, setPendingReload] = useState<{cardId: string, amount: numb
         }}
       >
         Confirm Reload
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+<Dialog open={showDeactivateConfirm} onOpenChange={setShowDeactivateConfirm}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Deactivation</DialogTitle>
+      <DialogDescription>
+        This card has a balance of {formatCurrency(selectedCard?.balance || 0)}. 
+        Are you sure you want to deactivate it?
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setShowDeactivateConfirm(false)}>
+        Cancel
+      </Button>
+      <Button variant="destructive" onClick={handleDeactivateCard}>
+        Confirm Deactivation
       </Button>
     </DialogFooter>
   </DialogContent>

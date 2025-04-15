@@ -21,7 +21,7 @@ export function TransactionsTab({ transactions, loading }: TransactionsTabProps)
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Customer purchase history</CardDescription>
+            <CardDescription>Customer purchase and balance history</CardDescription>
           </div>
           <Select>
             <SelectTrigger className="w-[180px]">
