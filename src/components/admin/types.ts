@@ -58,6 +58,17 @@ export interface Profile {
     cardsIssued: number;
   }
 
+  export interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    points_value: number;
+    is_active: boolean;
+    image_url: string | null;
+    created_at: string;
+  }
+
 export interface EnhancedTransaction extends Transaction {
     card: Card;
     user: Profile | null;

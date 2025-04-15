@@ -7,11 +7,13 @@ import { useTransactions } from "../components/admin/hooks/useTransactions";
 import { useMembers } from "../components/admin/hooks/useMembers";
 import { useCards } from "../components/admin/hooks/useCards";
 import { useRewards } from "../components/admin/hooks/useRewards";
+import { useProducts } from "../components/admin/hooks/useProducts";
 import { StatCards } from "../components/admin/components/StatCards";
 import { TransactionsTab } from "../components/admin/components/TransactionsTab";
 import { MembersTab } from "../components/admin/components/MembersTab";
 import { LoyaltyTab } from "../components/admin/components/LoyaltyTab";
 import { RewardsTab } from "../components/admin/components/RewardsTab";
+import { ProductsTab } from "../components/admin/components/ProductsTab";
 import { ShoppingCart, Users, CreditCard, Gift, Settings } from "lucide-react";
 import { CoffeeIcon } from "../components/admin/CoffeeIcon";
 
@@ -27,6 +29,7 @@ export default function AdminDashboard() {
   const { members, loading: membersLoading } = useMembers(user, activeTab);
   const { cards, loading: cardsLoading } = useCards(user, activeTab);
   const { rewards, loading: rewardsLoading } = useRewards(user, activeTab);
+  const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct } = useProducts(user, activeTab);
 
   if (statsLoading) {
     return <div className="p-8">Loading dashboard stats...</div>;
@@ -107,10 +110,14 @@ export default function AdminDashboard() {
             <RewardsTab rewards={rewards} loading={rewardsLoading} />
           </TabsContent>
           <TabsContent value="products" className="pt-4">
-            <div className="text-muted-foreground">
-              Products management coming soon...
-            </div>
-          </TabsContent>
+  <ProductsTab 
+    products={products} 
+    loading={productsLoading}
+    onCreate={createProduct}
+    onUpdate={updateProduct}
+    onDelete={deleteProduct}
+  />
+</TabsContent>
 
           <TabsContent value="settings" className="pt-4">
             <div className="text-muted-foreground">
