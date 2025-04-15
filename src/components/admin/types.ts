@@ -49,6 +49,8 @@ export interface Profile {
     description: string;
     points_required: number;
     is_active: boolean;
+    image_url: string | null;
+  created_at: string;
   }
   
   export interface AdminStats {

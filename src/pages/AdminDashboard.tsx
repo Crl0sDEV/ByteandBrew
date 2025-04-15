@@ -28,8 +28,15 @@ export default function AdminDashboard() {
   );
   const { members, loading: membersLoading } = useMembers(user, activeTab);
   const { cards, loading: cardsLoading } = useCards(user, activeTab);
-  const { rewards, loading: rewardsLoading } = useRewards(user, activeTab);
   const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct } = useProducts(user, activeTab);
+
+  const { 
+    rewards, 
+    loading: rewardsLoading, 
+    createReward, 
+    updateReward, 
+    deleteReward 
+  } = useRewards(user, activeTab);
 
   if (statsLoading) {
     return <div className="p-8">Loading dashboard stats...</div>;
@@ -107,8 +114,14 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="rewards" className="pt-4">
-            <RewardsTab rewards={rewards} loading={rewardsLoading} />
-          </TabsContent>
+  <RewardsTab 
+    rewards={rewards} 
+    loading={rewardsLoading}
+    onCreate={createReward}
+    onUpdate={updateReward}
+    onDelete={deleteReward}
+  />
+</TabsContent>
           <TabsContent value="products" className="pt-4">
   <ProductsTab 
     products={products} 
