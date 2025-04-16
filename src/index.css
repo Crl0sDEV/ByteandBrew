@@ -110,6 +110,27 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* index.css */
+.layout-container {
+  background-image: url('/public/pattern-randomized.svg');
+  background-size: 2000px 2000px; /* Match SVG's width/height attributes */
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+.dark .layout-container {
+  background-color: #1a2e05;
+  background-image: url('/protruding-squares-dark.svg'); 
+}
+
+.text-custom {
+  color: #6e4e37;
+}
+
+.text-custom-dark {
+  color: #d9c6b2;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -64,7 +64,7 @@ export default function Header() {
           alt="Logo"
           className="w-8 h-8 rounded-full object-contain"
         />
-        <span className="text-lg font-bold">BYTE & BREW</span>
+        <span className="text-lg font-bold text-custom">BYTE & BREW</span>
       </div>
 
       {/* Right: User Dropdown */}

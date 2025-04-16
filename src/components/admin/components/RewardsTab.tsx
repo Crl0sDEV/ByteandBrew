@@ -7,6 +7,17 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { RewardForm } from "./RewardForm";
 import { deleteRewardImage, uploadRewardImage } from "@/lib/uploadImage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface RewardsTabProps {
   rewards: Reward[];
@@ -19,6 +30,31 @@ interface RewardsTabProps {
 export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: RewardsTabProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rewardToDelete, setRewardToDelete] = useState<{id: string, image_url: string | null} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (reward: Reward) => {
+    setRewardToDelete({ id: reward.id, image_url: reward.image_url });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!rewardToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(rewardToDelete.id, rewardToDelete.image_url);
+      toast.success("Reward deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete reward");
+      console.error("Error deleting reward:", error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setRewardToDelete(null);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center p-8">Loading rewards...</div>;
@@ -83,11 +119,7 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this reward?')) {
-                              onDelete(reward.id, reward.image_url);
-                            }
-                          }}
+                          onClick={() => handleDeleteClick(reward)}
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
@@ -107,14 +139,38 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
         </CardContent>
       </UICard>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the reward
+              and remove its data from servers. Any users who have redeemed this
+              reward will keep their benefits, but no new redemptions will be possible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <RewardForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         reward={editingReward}
         onCreate={onCreate}
         onUpdate={onUpdate}
-        onUploadImage={uploadRewardImage}  // From useRewards hook
-  onDeleteImage={deleteRewardImage}
+        onUploadImage={uploadRewardImage}
+        onDeleteImage={deleteRewardImage}
       />
     </div>
   );

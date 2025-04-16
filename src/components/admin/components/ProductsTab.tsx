@@ -5,6 +5,17 @@ import { Product } from "../types";
 import { ProductForm } from "./ProductForm";
 import { useState } from "react";
 import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface ProductsTabProps {
   products: Product[];
@@ -23,6 +34,31 @@ export function ProductsTab({
 }: ProductsTabProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{id: string, image_url: string | null} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (product: Product) => {
+    setProductToDelete({ id: product.id, image_url: product.image_url });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDelete(productToDelete.id, productToDelete.image_url);
+      toast.success("Product deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete product");
+      console.error("Error deleting product:", error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center p-8">Loading products...</div>;
@@ -105,11 +141,7 @@ export function ProductsTab({
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this product?')) {
-                                onDelete(product.id, product.image_url);
-                              }
-                            }}
+                            onClick={() => handleDeleteClick(product)}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
@@ -129,6 +161,29 @@ export function ProductsTab({
           </div>
         </CardContent>
       </UICard>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product
+              and remove its data from servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ProductForm
         open={isFormOpen}

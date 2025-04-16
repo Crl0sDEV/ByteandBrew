@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import AuthPage from "@/pages/AuthPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import CustomerDashboard from "@/pages/CustomerDashboard";
+import PublicPage from "@/pages/ProductMenu"; // Import the new component
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import AccountSettings from "@/pages/AccountSettings";
@@ -16,7 +17,12 @@ function App() {
       <BrowserRouter>
         <Toaster richColors position="top-right" />
         <Routes>
-          <Route path="/" element={<AuthPage />} />
+          {/* Public routes */}
+          <Route path="/" element={<PublicPage />} /> {/* Main storefront */}
+          <Route path="/menu" element={<PublicPage />} /> {/* Alternative path */}
+          <Route path="/auth" element={<AuthPage />} /> {/* Moved auth to /auth */}
+
+          {/* Protected routes */}
           <Route 
             path="/dashboard" 
             element={

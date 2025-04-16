@@ -26,7 +26,7 @@ export function useAdminStats(user: any) {
           { data: redemptionsData },
           { data: cardsData }
         ] = await Promise.all([
-          supabase.from("transactions").select("amount").gte("created_at", today.toISOString()),
+          supabase.from("transactions").select("amount").gte("created_at", today.toISOString()).eq("type", "payment"),
           supabase.from("profiles").select("id").eq("role", "customer"),
           supabase.from("redemptions").select("id"),
           supabase.from("cards").select("id")

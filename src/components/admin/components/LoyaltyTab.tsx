@@ -75,7 +75,7 @@ const onCardRegister = async (uid: string, userId: string) => {
           card_id: cardId,
           amount: amount,
           type: 'reload',
-          status: 'completed'
+          status: 'Completed'
         });
   
       if (transactionError) {

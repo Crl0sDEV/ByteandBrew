@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@supabase/auth-helpers-react";
+import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminStats } from "../components/admin/hooks/useAdminStats";
 import { useTransactions } from "../components/admin/hooks/useTransactions";
 import { useMembers } from "../components/admin/hooks/useMembers";
@@ -16,31 +17,97 @@ import { RewardsTab } from "../components/admin/components/RewardsTab";
 import { ProductsTab } from "../components/admin/components/ProductsTab";
 import { ShoppingCart, Users, CreditCard, Gift, Settings } from "lucide-react";
 import { CoffeeIcon } from "../components/admin/CoffeeIcon";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminDashboard() {
   const user = useUser();
-  const [activeTab, setActiveTab] = useState("transactions");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "transactions");
+
+  // Sync tab state with URL
+  useEffect(() => {
+    setSearchParams({ tab: activeTab }, { replace: true });
+  }, [activeTab, setSearchParams]);
+
+  // Handle browser tab visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Optional: Add data refresh logic here if needed
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   const { stats, loading: statsLoading } = useAdminStats(user);
-  const { transactions, loading: transactionsLoading } = useTransactions(
-    user,
-    activeTab
-  );
+  const { transactions, loading: transactionsLoading } = useTransactions(user, activeTab);
   const { members, loading: membersLoading } = useMembers(user, activeTab);
   const { cards, loading: cardsLoading } = useCards(user, activeTab);
   const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct } = useProducts(user, activeTab);
-
-  const { 
-    rewards, 
-    loading: rewardsLoading, 
-    createReward, 
-    updateReward, 
-    deleteReward 
-  } = useRewards(user, activeTab);
+  const { rewards, loading: rewardsLoading, createReward, updateReward, deleteReward } = useRewards(user, activeTab);
 
   if (statsLoading) {
-    return <div className="p-8">Loading dashboard stats...</div>;
+    return (
+      <div className="p-8">
+        <div className="h-8 w-1/3 bg-muted rounded animate-pulse mb-4" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
   }
+
+  const renderTabContent = (tab: string) => {
+    switch (tab) {
+      case "transactions":
+        return (
+          <TransactionsTab
+            transactions={transactions}
+            loading={transactionsLoading}
+          />
+        );
+      case "members":
+        return <MembersTab members={members} loading={membersLoading} />;
+      case "loyalty":
+        return (
+          <LoyaltyTab
+            cards={cards}
+            members={members}
+            loading={cardsLoading}
+            onCardRegister={async () => {}}
+            onCardReload={async () => {}}
+            onCardDeactivate={async () => {}}
+          />
+        );
+      case "rewards":
+        return (
+          <RewardsTab 
+            rewards={rewards} 
+            loading={rewardsLoading}
+            onCreate={createReward}
+            onUpdate={updateReward}
+            onDelete={deleteReward}
+          />
+        );
+      case "products":
+        return (
+          <ProductsTab 
+            products={products} 
+            loading={productsLoading}
+            onCreate={createProduct}
+            onUpdate={updateProduct}
+            onDelete={deleteProduct}
+          />
+        );
+      case "settings":
+        return <div className="text-muted-foreground">Settings configuration coming soon...</div>;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="p-4 md:p-8">
@@ -57,15 +124,12 @@ export default function AdminDashboard() {
         <StatCards stats={stats} />
 
         <Tabs
-          defaultValue="transactions"
+          value={activeTab}
           onValueChange={setActiveTab}
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <TabsTrigger
-              value="transactions"
-              className="flex items-center gap-2"
-            >
+            <TabsTrigger value="transactions" className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Transactions</span>
             </TabsTrigger>
@@ -91,52 +155,18 @@ export default function AdminDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="transactions" className="pt-4">
-            <TransactionsTab
-              transactions={transactions}
-              loading={transactionsLoading}
-            />
-          </TabsContent>
-
-          <TabsContent value="members" className="pt-4">
-            <MembersTab members={members} loading={membersLoading} />
-          </TabsContent>
-
-          <TabsContent value="loyalty" className="pt-4 space-y-4">
-            <LoyaltyTab
-              cards={cards}
-              members={members}
-              loading={cardsLoading}
-              onCardRegister={async () => {}}
-              onCardReload={async () => {}}
-              onCardDeactivate={async () => {}}
-            />
-          </TabsContent>
-
-          <TabsContent value="rewards" className="pt-4">
-  <RewardsTab 
-    rewards={rewards} 
-    loading={rewardsLoading}
-    onCreate={createReward}
-    onUpdate={updateReward}
-    onDelete={deleteReward}
-  />
-</TabsContent>
-          <TabsContent value="products" className="pt-4">
-  <ProductsTab 
-    products={products} 
-    loading={productsLoading}
-    onCreate={createProduct}
-    onUpdate={updateProduct}
-    onDelete={deleteProduct}
-  />
-</TabsContent>
-
-          <TabsContent value="settings" className="pt-4">
-            <div className="text-muted-foreground">
-              Settings configuration coming soon...
-            </div>
-          </TabsContent>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="pt-4"
+            >
+              {renderTabContent(activeTab)}
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
       </div>
     </div>
