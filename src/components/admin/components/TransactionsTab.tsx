@@ -27,41 +27,39 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
       setFilteredTransactions(transactions.filter(t => t.status.toLowerCase() === statusFilter));
     }
     
-    // Extract pending transactions for approval card
     setPendingTransactions(transactions.filter(t => t.status === 'Pending'));
   }, [statusFilter, transactions]);
 
+  const verifyAdmin = async () => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      throw new Error('Not authenticated');
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      throw new Error('Only admins can perform this action');
+    }
+
+    return true;
+  };
+
   const handleApprove = async (transactionId: string) => {
     try {
-      // First get the current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      await verifyAdmin();
       
-      if (sessionError || !session) {
-        throw new Error('Not authenticated');
-      }
-  
-      // Verify admin role from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-  
-      if (profileError || !profile || profile.role !== 'admin') {
-        throw new Error('Only admins can approve transactions');
-      }
-  
-      // Update transaction status
-      const { error: updateError } = await supabase
-        .from('transactions')
-        .update({ 
-          status: 'Completed',
-          confirmed: true 
-        })
-        .eq('id', transactionId);
-  
-      if (updateError) throw updateError;
-  
+      const { error } = await supabase.rpc('approve_transaction', {
+        tx_id: transactionId
+      });
+
+      if (error) throw error;
+
       toast.success('Transaction approved successfully');
       if (onStatusChange) onStatusChange();
     } catch (error) {
@@ -72,10 +70,11 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
 
   const handleReject = async (transactionId: string) => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ status: 'Failed' })
-        .eq('id', transactionId);
+      await verifyAdmin();
+
+      const { error } = await supabase.rpc('reject_transaction', {
+        tx_id: transactionId
+      });
 
       if (error) throw error;
 
@@ -88,10 +87,9 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
 
   const handleApproveAll = async () => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ status: 'Completed', confirmed: true })
-        .eq('status', 'Pending');
+      await verifyAdmin();
+
+      const { error } = await supabase.rpc('approve_all_pending_transactions');
 
       if (error) throw error;
 
@@ -121,6 +119,7 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
                 size="sm" 
                 onClick={handleApproveAll}
                 variant="outline"
+                className="bg-green-100 hover:bg-green-200 text-green-800"
               >
                 Approve All
               </Button>
@@ -143,12 +142,13 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
                     <Button 
                       size="sm" 
                       onClick={() => handleApprove(t.id)}
+                      className="bg-green-600 hover:bg-green-700"
                     >
                       Approve
                     </Button>
                     <Button 
                       size="sm" 
-                      variant="outline" 
+                      variant="destructive" 
                       onClick={() => handleReject(t.id)}
                     >
                       Reject
@@ -177,7 +177,7 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
                 <SelectItem value="all">All Transactions</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -203,7 +203,7 @@ export function TransactionsTab({ transactions, loading, onStatusChange }: Trans
                     <TableCell>{t.user?.full_name || 'Anonymous'}</TableCell>
                     <TableCell>₱{t.amount.toFixed(2)}</TableCell>
                     <TableCell>{t.item_count || 0}</TableCell>
-                    <TableCell>{t.type}</TableCell>
+                    <TableCell className="capitalize">{t.type}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={
