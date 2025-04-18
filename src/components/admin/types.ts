@@ -68,6 +68,11 @@ export interface Profile {
     is_active: boolean;
     image_url: string | null;
     created_at: string;
+    base_price: number;
+    has_sizes: boolean;
+    sizes: string[];
+    category: string;
+    is_add_on: boolean; 
   }
 
 export interface EnhancedTransaction extends Transaction {
