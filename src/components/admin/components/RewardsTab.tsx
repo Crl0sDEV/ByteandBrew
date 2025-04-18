@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Reward } from "../types";
 import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageIcon } from "lucide-react";
 import { useState } from "react";
 import { RewardForm } from "./RewardForm";
 import { deleteRewardImage, uploadRewardImage } from "@/lib/uploadImage";
@@ -86,6 +86,7 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
             <TableHeader>
               <TableRow>
                 <TableHead>Reward</TableHead>
+                <TableHead>Image</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Points Required</TableHead>
                 <TableHead>Status</TableHead>
@@ -97,6 +98,19 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
                 rewards.map((reward) => (
                   <TableRow key={reward.id}>
                     <TableCell className="font-medium">{reward.name}</TableCell>
+                    <TableCell>
+                        {reward.image_url ? (
+                          <img
+                            src={reward.image_url}
+                            alt={reward.name}
+                            className="w-12 h-12 object-cover rounded-md"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                     <TableCell>{reward.description}</TableCell>
                     <TableCell>{reward.points_required}</TableCell>
                     <TableCell>

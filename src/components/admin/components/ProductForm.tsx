@@ -177,25 +177,30 @@ interface ProductFormProps {
                 placeholder="Enter product description"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (₱)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                {...register("price", { required: true, valueAsNumber: true })}
-                placeholder="Enter price"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="points_value">Points Value</Label>
-              <Input
-                id="points_value"
-                type="number"
-                {...register("points_value", { required: true, valueAsNumber: true })}
-                placeholder="Enter points value"
-              />
-            </div>
+            <div className="flex gap-4">
+  <div className="flex-1 space-y-2">
+    <Label htmlFor="price">Price (₱)</Label>
+    <Input
+      id="price"
+      type="number"
+      step="0.01"
+      min="0"
+      {...register("price", { required: true, valueAsNumber: true, min: 0, })}
+      placeholder="Enter price"
+    />
+  </div>
+  <div className="flex-1 space-y-2">
+    <Label htmlFor="points_value">Points Value</Label>
+    <Input
+      id="points_value"
+      type="number"
+      min="1"
+      {...register("points_value", { required: true, valueAsNumber: true, min: 1, })}
+      placeholder="Enter points value"
+    />
+  </div>
+</div>
+
             <div className="flex items-center space-x-2">
               <Switch id="is_active" {...register("is_active")} />
               <Label htmlFor="is_active">Active</Label>

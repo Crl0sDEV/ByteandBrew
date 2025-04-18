@@ -1,5 +1,3 @@
-import { ReactNode } from "react";
-
 export interface Profile {
     id: string;
     full_name: string;
@@ -20,7 +18,6 @@ export interface Profile {
   }
   
   export interface Transaction {
-    type: ReactNode;
     id: string;
     amount: number;
     item_count: number;

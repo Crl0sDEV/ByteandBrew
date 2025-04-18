@@ -1,11 +1,16 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { Product } from '@/lib/types';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ShoppingCart, CreditCard, Scan } from 'lucide-react';
-import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Product } from "@/lib/types";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, CreditCard, Scan } from "lucide-react";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +18,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
 export default function ProductMenu() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,21 +32,21 @@ export default function ProductMenu() {
     balance: number;
     points: number;
   } | null>(null);
-  const navigate = useNavigate();
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true);
+          .from("products")
+          .select("*")
+          .eq("is_active", true);
 
         if (error) throw error;
         setProducts(data || []);
       } catch (error) {
-        toast.error('Failed to load products');
+        toast.error("Failed to load products");
       } finally {
         setLoading(false);
       }
@@ -50,48 +55,61 @@ export default function ProductMenu() {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    if (scanMode && scanInputRef.current) {
+      scanInputRef.current.focus();
+    }
+  }, [scanMode]);
+
   const handleRFIDScan = async (rfidData: string) => {
     if (!scanMode || cart.length === 0) return;
-  
+
     try {
       const { data: card, error: cardError } = await supabase
-        .from('cards')
-        .select('id, user_id, balance, points')
-        .eq('uid', rfidData.trim())
+        .from("cards")
+        .select("id, user_id, balance, points")
+        .eq("uid", rfidData.trim())
         .single();
-  
-      if (cardError?.code === 'PGRST116') { // Item not found error code
-        toast.error('This card is not registered');
+
+      if (cardError?.code === "PGRST116") {
+        toast.error("This card is not registered");
         setScanMode(false);
+        setIsCartOpen(false);
         return;
       }
-  
+
       if (cardError || !card) {
-        throw new Error(cardError?.message || 'Card lookup failed');
+        throw new Error(cardError?.message || "Card lookup failed");
       }
-  
-      // Check balance
+
       const currentTotal = cart.reduce((sum, product) => sum + product.price, 0);
       if (card.balance < currentTotal) {
-        toast.error(`Insufficient balance. Your card has ₱${card.balance.toFixed(2)} but need ₱${currentTotal.toFixed(2)}`);
+        toast.error(
+          `Insufficient balance. Your card has ₱${card.balance.toFixed(
+            2
+          )} but need ₱${currentTotal.toFixed(2)}`
+        );
         setScanMode(false);
+        setIsCartOpen(false);
         return;
       }
-  
+
       setCardData({
         id: card.id,
         balance: card.balance,
         points: card.points,
       });
       setShowConfirmation(true);
-    } catch (error) {
-      console.error('RFID scan error:', error);
-      toast.error('Failed to scan card. Please try again.');
       setScanMode(false);
+      setIsCartOpen(false);
+    } catch (error) {
+      console.error("RFID scan error:", error);
+      toast.error("Failed to scan card. Please try again.");
+      setScanMode(false);
+      setIsCartOpen(false);
     }
   };
 
-  // Calculate totals and points using useMemo for better performance
   const { total, pointsEarned } = useMemo(() => {
     const calculatedTotal = cart.reduce((sum, item) => sum + item.price, 0);
     const calculatedPoints = Math.floor(calculatedTotal / 100);
@@ -104,57 +122,57 @@ export default function ProductMenu() {
 
   const processPayment = async () => {
     if (!cardData || cart.length === 0) return;
-  
+
     const total = cart.reduce((sum, product) => sum + product.price, 0);
-    
+
     setPaymentLoading(true);
     try {
       const itemCount = cart.length;
       const pointsEarned = Math.floor(total / 100);
-  
-      // Create transaction with Pending status
+
       const { error: transactionError } = await supabase
-        .from('transactions')
+        .from("transactions")
         .insert({
           card_id: cardData.id,
           amount: total,
-          type: 'payment',
+          type: "payment",
           item_count: itemCount,
-          status: 'Pending', // Changed from 'Completed'
+          status: "Pending",
           points_earned: pointsEarned,
-          confirmed: false, // Will be set to true by admin
+          confirmed: false,
         });
-  
+
       if (transactionError) throw transactionError;
-  
+
       toast.success(
         `Payment request of ₱${total.toFixed(2)} submitted for admin approval`
       );
       setCart([]);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Payment submission failed');
-    } finally {
-      setPaymentLoading(false);
       setShowConfirmation(false);
       setCardData(null);
       setScanMode(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Payment submission failed"
+      );
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
-  // RFID Scanner Input Handler
   useEffect(() => {
     const handleInput = (e: Event) => {
       const input = e.target as HTMLInputElement;
-      if (input.value.length > 9) { // Assuming RFID tags have more than 8 characters
+      if (input.value.length > 9) {
         handleRFIDScan(input.value);
-        input.value = ''; // Clear the input for next scan
+        input.value = "";
       }
     };
 
     const input = scanInputRef.current;
     if (input) {
-      input.addEventListener('input', handleInput);
-      return () => input.removeEventListener('input', handleInput);
+      input.addEventListener("input", handleInput);
+      return () => input.removeEventListener("input", handleInput);
     }
   }, [scanMode, cart]);
 
@@ -171,8 +189,7 @@ export default function ProductMenu() {
 
   const startPayment = () => {
     setScanMode(true);
-    toast.info('Please scan your RFID card', { duration: 5000 });
-    setTimeout(() => scanInputRef.current?.focus(), 100);
+    toast.info("Please scan your RFID card", { duration: 5000 });
   };
 
   const cancelPayment = () => {
@@ -210,7 +227,11 @@ export default function ProductMenu() {
       <header className="bg-white shadow-sm p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-primary">BYTE & BREW</h1>
         <div className="relative">
-          <Button variant="outline" className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex gap-2"
+            onClick={() => setIsCartOpen(true)}
+          >
             <ShoppingCart className="w-5 h-5" />
             Cart ({cart.length})
           </Button>
@@ -226,7 +247,10 @@ export default function ProductMenu() {
         {/* Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
           {products.map((product) => (
-            <Card key={product.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={product.id}
+              className="hover:shadow-md transition-shadow"
+            >
               <CardHeader className="p-0">
                 {product.image_url ? (
                   <img
@@ -242,14 +266,13 @@ export default function ProductMenu() {
               </CardHeader>
               <CardContent className="p-4">
                 <h3 className="font-semibold text-lg">{product.name}</h3>
-                <p className="text-muted-foreground line-clamp-2">{product.description}</p>
+                <p className="text-muted-foreground line-clamp-2">
+                  {product.description}
+                </p>
                 <p className="font-bold mt-2">₱{product.price.toFixed(2)}</p>
               </CardContent>
               <CardFooter className="p-4 pt-0">
-                <Button
-                  onClick={() => addToCart(product)}
-                  className="w-full"
-                >
+                <Button onClick={() => addToCart(product)} className="w-full">
                   Add to Cart
                 </Button>
               </CardFooter>
@@ -258,114 +281,131 @@ export default function ProductMenu() {
         </div>
 
         {/* Cart & Payment Section */}
-        {cart.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
-            <div className="container mx-auto">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold">Your Order</h3>
-                  <div className="max-h-32 overflow-y-auto">
-                    {cart.map((item, index) => (
-                      <div key={index} className="flex justify-between py-1">
-                        <span>
-                          {item.name} - ₱{item.price.toFixed(2)}
-                        </span>
-                        <button
-                          onClick={() => removeFromCart(index)}
-                          className="text-red-500 ml-4"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="font-bold mt-2">
-                    Total: ₱{cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)}
-                  </p>
-                </div>
-                <Button
-                  onClick={startPayment}
-                  disabled={paymentLoading || scanMode}
-                  className="flex gap-2"
+        <Dialog open={isCartOpen} onOpenChange={setIsCartOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Your Cart</DialogTitle>
+              <DialogDescription>
+    Review and manage items in your shopping cart
+  </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {cart.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center border-b pb-1"
                 >
-                  {paymentLoading ? (
-                    'Processing...'
-                  ) : scanMode ? (
-                    <>
-                      <Scan className="w-5 h-5 animate-pulse" />
-                      Ready to Scan
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5" />
-                      Pay with RFID
-                    </>
-                  )}
-                </Button>
-              </div>
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ₱{item.price.toFixed(2)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="text-red-500"
+                    onClick={() => removeFromCart(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+            <div className="flex justify-between items-center mt-4">
+              <p className="font-bold">Total: ₱{total.toFixed(2)}</p>
+              <Button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  startPayment();
+                }}
+                disabled={paymentLoading || scanMode}
+                className="flex gap-2"
+              >
+                {paymentLoading ? (
+                  "Processing..."
+                ) : scanMode ? (
+                  <>
+                    <Scan className="w-5 h-5 animate-pulse text-blue-500" />
+                    <span className="text-blue-500">Scanning Card...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-5 h-5" />
+                    Pay with CARD
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Payment Confirmation Dialog */}
-      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirm Payment</DialogTitle>
-            <DialogDescription>
-              Please review your order before confirming
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div>
-              <h4 className="font-medium mb-2">Your Order:</h4>
-              <ul className="max-h-40 overflow-y-auto border rounded-lg p-2">
-                {cart.map((item, index) => (
-                  <li key={index} className="flex justify-between py-1">
-                    <span>{item.name}</span>
-                    <span>₱{item.price.toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="font-bold mt-2 text-right">
-                Total: ₱{total.toFixed(2)}
-              </p>
-            </div>
-            {cardData && (
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Current Balance:</span>
-                  <span>₱{cardData.balance.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>New Balance:</span>
-                  <span>₱{newBalance.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Points Earned:</span>
-                  <span>{pointsEarned}</span>
-                </div>
+        <Dialog 
+          open={showConfirmation} 
+          onOpenChange={(open) => {
+            if (!open) {
+              cancelPayment();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Confirm Payment</DialogTitle>
+              <DialogDescription>
+                Please review your order before confirming
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div>
+                <h4 className="font-medium mb-2">Your Order:</h4>
+                <ul className="max-h-40 overflow-y-auto border rounded-lg p-2">
+                  {cart.map((item, index) => (
+                    <li key={index} className="flex justify-between py-1">
+                      <span>{item.name}</span>
+                      <span>₱{item.price.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="font-bold mt-2 text-right">
+                  Total: ₱{total.toFixed(2)}
+                </p>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelPayment}>
-              Cancel
-            </Button>
-            <Button onClick={processPayment} disabled={paymentLoading}>
-              {paymentLoading ? 'Processing...' : 'Confirm Payment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+              {cardData && (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Current Balance:</span>
+                    <span>₱{cardData.balance.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>New Balance:</span>
+                    <span>₱{newBalance.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Points Earned:</span>
+                    <span>{pointsEarned}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={cancelPayment}>
+                Cancel
+              </Button>
+              <Button onClick={processPayment} disabled={paymentLoading}>
+                {paymentLoading ? "Processing..." : "Confirm Payment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Payment Processing Modal */}
         {paymentLoading && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <Card className="w-full max-w-md">
               <CardHeader>
-                <h3 className="text-xl font-bold text-center">Processing Payment</h3>
+                <h3 className="text-xl font-bold text-center">
+                  Processing Payment
+                </h3>
               </CardHeader>
               <CardContent className="flex justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
