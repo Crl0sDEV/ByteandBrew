@@ -1,5 +1,3 @@
-import { ReactNode } from "react";
-
 export interface Profile {
     id: string;
     full_name: string;
@@ -20,7 +18,6 @@ export interface Profile {
   }
   
   export interface Transaction {
-    type: ReactNode;
     id: string;
     amount: number;
     item_count: number;
@@ -71,6 +68,11 @@ export interface Profile {
     is_active: boolean;
     image_url: string | null;
     created_at: string;
+    base_price: number;
+    has_sizes: boolean;
+    sizes: string[];
+    category: string;
+    is_add_on: boolean; 
   }
 
 export interface EnhancedTransaction extends Transaction {

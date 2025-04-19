@@ -22,6 +22,8 @@ export function useTransactions(user: any, activeTab: string) {
             status,
             created_at,
             card_id,
+            category,
+            selected_size,
             cards!inner(
               uid,
               user_id

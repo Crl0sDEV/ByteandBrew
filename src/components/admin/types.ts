@@ -27,6 +27,12 @@ export interface Profile {
     card_id: string;
     cards: Card;
     user?: Profile | null;
+    base_price: number;
+  has_sizes: boolean;
+  selected_size: string | null;
+  category: string;
+  is_add_on: boolean;
+  price: number;
   }
   
   export interface Member {

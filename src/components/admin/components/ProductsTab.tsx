@@ -139,7 +139,7 @@ export function ProductsTab({
                   <TableHead>Name</TableHead>
                   <TableHead>Image</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Base Price</TableHead>
+                  <TableHead>Price</TableHead>
                   <TableHead>Points</TableHead>
                   <TableHead>Sizes</TableHead>
                   <TableHead>Type</TableHead>

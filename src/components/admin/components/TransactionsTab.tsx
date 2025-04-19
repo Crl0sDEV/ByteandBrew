@@ -56,7 +56,9 @@ export function TransactionsTab({
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsPerPage = 5;
 
-  const totalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
+  const totalPages = Math.ceil(
+    filteredTransactions.length / transactionsPerPage
+  );
   const indexOfLastTransaction = currentPage * transactionsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
   const currentTransactions = filteredTransactions.slice(
@@ -155,12 +157,16 @@ export function TransactionsTab({
       toast.success("All pending transactions approved");
       if (onStatusChange) onStatusChange();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to approve all");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to approve all"
+      );
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading transactions...</div>;
+    return (
+      <div className="flex justify-center p-8">Loading transactions...</div>
+    );
   }
 
   return (
@@ -189,20 +195,19 @@ export function TransactionsTab({
           <CardContent>
             <div className="space-y-4">
               {pendingTransactions.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">Card: {t.cards?.uid || "N/A"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t.user?.full_name || "Anonymous"} - ₱
-                      {t.amount.toFixed(2)} ({t.item_count} items)
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(t.created_at), "MMM d, h:mm a")}
-                    </p>
-                  </div>
+                <div key={t.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">Card: {t.cards?.uid || "N/A"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t.user?.full_name || "Anonymous"} - ₱{t.amount.toFixed(2)}
+                    {t.selected_size && ` • Size: ${t.selected_size}`} {/* Display as plain string */}
+        {t.category && ` • ${t.category}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.is_add_on && "Add-on • "}
+                    {format(new Date(t.created_at), "MMM d, h:mm a")}
+                  </p>
+                </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -254,9 +259,10 @@ export function TransactionsTab({
                 <TableHead>Card</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="text-right">Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -267,8 +273,20 @@ export function TransactionsTab({
                     <TableCell>{t.cards?.uid || "N/A"}</TableCell>
                     <TableCell>{t.user?.full_name || "Anonymous"}</TableCell>
                     <TableCell>₱{t.amount.toFixed(2)}</TableCell>
-                    <TableCell>{t.item_count || 0}</TableCell>
-                    <TableCell className="capitalize">{t.type}</TableCell>
+                    <TableCell>
+                      {t.selected_size ? (
+                        <Badge variant="outline">
+                          {t.selected_size.toUpperCase()}
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {t.category || "N/A"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -282,6 +300,7 @@ export function TransactionsTab({
                         {t.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>{t.type}</TableCell>
                     <TableCell className="text-right">
                       {format(new Date(t.created_at), "MMM d, h:mm a")}
                     </TableCell>
@@ -289,7 +308,7 @@ export function TransactionsTab({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={8} className="text-center">
                     No transactions found
                   </TableCell>
                 </TableRow>
@@ -303,7 +322,9 @@ export function TransactionsTab({
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     className={
                       currentPage === 1 ? "pointer-events-none opacity-50" : ""
                     }

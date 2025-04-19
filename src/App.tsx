@@ -15,7 +15,7 @@ function App() {
   return (
     <SessionContextProvider supabaseClient={supabase}>
       <BrowserRouter>
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-center" />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<PublicPage />} /> {/* Main storefront */}
