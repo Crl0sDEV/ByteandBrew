@@ -1,65 +1,37 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Product } from "@/lib/types";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Product, CartItem } from "@/lib/types";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, CreditCard, Scan, X, ChevronDown } from "lucide-react";
+import { ShoppingCart, CreditCard, Scan, X } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-// Define size options
-const SIZE_OPTIONS = [
-  { value: 'small', label: 'Small (12oz)', priceModifier: 0 },
-  { value: 'medium', label: 'Medium (16oz)', priceModifier: 10 },
-  { value: 'large', label: 'Large (20oz)', priceModifier: 20 },
-];
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ProductCard from "../components/menu/ProductCard";
+import { SIZE_OPTIONS, calculateCartTotals, getUniqueCategories } from "../components/menu/productHelpers";
+import SizeDialog from "../components/menu/SizeDialog";
+import TemperatureDialog from "../components/menu/TemperatureDialog";
 
 export default function ProductMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<{product: Product, size: string | null}[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [scanMode, setScanMode] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [cardData, setCardData] = useState<{
-    id: string;
-    balance: number;
-    points: number;
-  } | null>(null);
+  const [cardData, setCardData] = useState<{ id: string; balance: number; points: number } | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [showSizeDialog, setShowSizeDialog] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedTemperature, setSelectedTemperature] = useState<string>("hot");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showSizeDialog, setShowSizeDialog] = useState(false);
+  const [showTemperatureDialog, setShowTemperatureDialog] = useState(false);
 
-  // Extract unique categories from products
-  const categories = useMemo(() => {
-    const allCategories = products.map(p => p.category);
-    return ['all', ...new Set(allCategories)];
-  }, [products]);
+  const categories = useMemo(() => getUniqueCategories(products), [products]);
+  const { total, pointsEarned } = useMemo(() => calculateCartTotals(cart), [cart]);
+  const newBalance = useMemo(() => cardData ? cardData.balance - total : 0, [cardData, total]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -82,12 +54,11 @@ export default function ProductMenu() {
     fetchProducts();
   }, []);
 
-  // Filter products by category
   useEffect(() => {
-    if (selectedCategory === 'all') {
+    if (selectedCategory === "all") {
       setFilteredProducts(products);
     } else {
-      setFilteredProducts(products.filter(p => p.category === selectedCategory));
+      setFilteredProducts(products.filter((p) => p.category === selectedCategory));
     }
   }, [selectedCategory, products]);
 
@@ -118,17 +89,9 @@ export default function ProductMenu() {
         throw new Error(cardError?.message || "Card lookup failed");
       }
 
-      const currentTotal = cart.reduce((sum, item) => {
-        const sizeModifier = item.size 
-          ? SIZE_OPTIONS.find(s => s.value === item.size)?.priceModifier || 0 
-          : 0;
-        return sum + item.product.base_price + sizeModifier;
-      }, 0);
-      if (card.balance < currentTotal) {
+      if (card.balance < total) {
         toast.error(
-          `Insufficient balance. Your card has ₱${card.balance.toFixed(
-            2
-          )} but need ₱${currentTotal.toFixed(2)}`
+          `Insufficient balance. Your card has ₱${card.balance.toFixed(2)} but need ₱${total.toFixed(2)}`
         );
         setScanMode(false);
         setIsCartOpen(false);
@@ -151,58 +114,39 @@ export default function ProductMenu() {
     }
   };
 
-  const { total, pointsEarned } = useMemo(() => {
-    const calculatedTotal = cart.reduce((sum, item) => {
-      const sizePrice = item.size ? SIZE_OPTIONS.find(s => s.value === item.size)?.priceModifier || 0 : 0;
-      return sum + (item.product.base_price + sizePrice);
-    }, 0);
-    const calculatedPoints = Math.floor(calculatedTotal / 100);
-    return { total: calculatedTotal, pointsEarned: calculatedPoints };
-  }, [cart]);
-
-  const newBalance = useMemo(() => {
-    return cardData ? cardData.balance - total : 0;
-  }, [cardData, total]);
-
   const processPayment = async () => {
     if (!cardData || cart.length === 0) return;
-  
+
     setPaymentLoading(true);
     try {
       const itemCount = cart.length;
-      const pointsEarned = Math.floor(total / 100);
-  
-      // Create an array of all items in the cart with their details
-  
+
       const { error: transactionError } = await supabase
         .from("transactions")
         .insert({
           card_id: cardData.id,
           amount: total,
-          base_price: cart.reduce((sum, item) => sum + item.product.base_price, 0), // Sum of all base prices
+          base_price: cart.reduce((sum, item) => sum + item.product.base_price, 0),
           type: "payment",
           item_count: itemCount,
           status: "Pending",
           points_earned: pointsEarned,
-          confirmed: false, // Store all items as JSON array
-          selected_size: cart.find(item => item.size)?.size || null, // Store selected size if any
-          category: cart[0]?.product.category || null, // Primary category
-          is_add_on: cart.some(item => item.product.is_add_on) // True if any item is add-on
+          confirmed: false,
+          selected_size: cart.find((item) => item.size)?.size || null,
+          category: cart[0]?.product.category || null,
+          is_add_on: cart.some((item) => item.product.is_add_on),
+          temperature: cart[0]?.temperature || null,
         });
-  
+
       if (transactionError) throw transactionError;
-  
-      toast.success(
-        `Payment request of ₱${total.toFixed(2)} submitted for admin approval`
-      );
+
+      toast.success(`Payment request of ₱${total.toFixed(2)} submitted for admin approval`);
       setCart([]);
       setShowConfirmation(false);
       setCardData(null);
       setScanMode(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Payment submission failed"
-      );
+      toast.error(error instanceof Error ? error.message : "Payment submission failed");
     } finally {
       setPaymentLoading(false);
     }
@@ -225,19 +169,53 @@ export default function ProductMenu() {
   }, [scanMode, cart]);
 
   const addToCart = (product: Product) => {
-    if (product.has_sizes) {
+    if (product.temperature && product.temperature !== "both") {
+      if (product.has_sizes) {
+        setSelectedProduct(product);
+        setShowSizeDialog(true);
+      } else {
+        setCart([...cart, { product, size: null, temperature: product.temperature }]);
+        toast.success(`${product.name} added to cart`);
+      }
+    } else if (product.temperature === "both") {
       setSelectedProduct(product);
+      setSelectedTemperature("hot");
+      setShowTemperatureDialog(true);
+    } else {
+      if (product.has_sizes) {
+        setSelectedProduct(product);
+        setShowSizeDialog(true);
+      } else {
+        setCart([...cart, { product, size: null, temperature: null }]);
+        toast.success(`${product.name} added to cart`);
+      }
+    }
+  };
+
+  const addToCartWithTemperature = () => {
+    if (!selectedProduct) return;
+
+    if (selectedProduct.has_sizes) {
+      setShowTemperatureDialog(false);
       setShowSizeDialog(true);
     } else {
-      setCart([...cart, { product, size: null }]);
-      toast.success(`${product.name} added to cart`);
+      setCart([...cart, { product: selectedProduct, size: null, temperature: selectedTemperature }]);
+      toast.success(`${selectedProduct.name} (${selectedTemperature}) added to cart`);
+      setShowTemperatureDialog(false);
     }
   };
 
   const addToCartWithSize = (size: string) => {
     if (!selectedProduct) return;
-    setCart([...cart, { product: selectedProduct, size }]);
-    toast.success(`${selectedProduct.name} (${SIZE_OPTIONS.find(s => s.value === size)?.label}) added to cart`);
+    setCart([...cart, { product: selectedProduct, size, temperature: null }]);
+    toast.success(`${selectedProduct.name} (${SIZE_OPTIONS.find((s) => s.value === size)?.label}) added to cart`);
+    setShowSizeDialog(false);
+  };
+
+  const addToCartWithSizeAndTemperature = (size: string) => {
+    if (!selectedProduct) return;
+    setCart([...cart, { product: selectedProduct, size, temperature: selectedTemperature }]);
+    toast.success(`${selectedProduct.name} (${SIZE_OPTIONS.find((s) => s.value === size)?.label}, ${selectedTemperature}) added to cart`);
     setShowSizeDialog(false);
   };
 
@@ -274,8 +252,7 @@ export default function ProductMenu() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hidden input for RFID scanner */}
+    <div className="min-h-screen bg-background">
       <input
         ref={scanInputRef}
         type="text"
@@ -283,116 +260,68 @@ export default function ProductMenu() {
         autoComplete="off"
       />
 
-      {/* Header */}
-      <header className="bg-white shadow-sm p-4 flex justify-between items-center">
+      <header className="bg-background sticky top-0 z-10 border-b p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-primary">BYTE & BREW</h1>
         <div className="relative">
           <Button
-            variant="outline"
-            className="flex gap-2"
+            variant="secondary"
+            className="flex gap-2 relative"
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="w-5 h-5" />
-            Cart ({cart.length})
+            <span>Cart</span>
+            {cart.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {cart.length}
+              </span>
+            )}
           </Button>
-          {cart.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {cart.length}
-            </span>
-          )}
         </div>
       </header>
 
       <div className="container mx-auto p-4">
-        {/* Category Filter */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-4">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map(category => (
+              {categories.map((category) => (
                 <SelectItem key={category} value={category}>
-                  {category === 'all' ? 'All Categories' : category}
+                  {category === "all" ? "All Categories" : category}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredProducts.map((product) => (
-            <Card
-              key={product.id}
-              className="hover:shadow-md transition-shadow"
-            >
-              <CardHeader className="p-0">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-muted flex items-center justify-center rounded-t-lg">
-                    <span className="text-muted-foreground">No image</span>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">{product.name}</h3>
-                  <Badge variant="outline">{product.category}</Badge>
-                </div>
-                <p className="text-muted-foreground line-clamp-2">
-                  {product.description}
-                </p>
-                <div className="mt-2">
-                  <p className="font-bold">₱{product.base_price.toFixed(2)}</p>
-                  {product.has_sizes && (
-                    <p className="text-xs text-muted-foreground">
-                      Available in multiple sizes
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="p-4 pt-0">
-                <Button 
-                  onClick={() => addToCart(product)} 
-                  className="w-full"
-                >
-                  Add to Cart
-                </Button>
-              </CardFooter>
-            </Card>
+            <ProductCard 
+              key={product.id} 
+              product={product} 
+              onAddToCart={addToCart} 
+            />
           ))}
         </div>
 
-        {/* Size Selection Dialog */}
-        <Dialog open={showSizeDialog} onOpenChange={setShowSizeDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Select Size</DialogTitle>
-              <DialogDescription>
-                Choose your preferred size for {selectedProduct?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              {SIZE_OPTIONS.map((size) => (
-                <Button
-                  key={size.value}
-                  variant="outline"
-                  className="justify-between"
-                  onClick={() => addToCartWithSize(size.value)}
-                >
-                  <span>{size.label}</span>
-                  <span>+₱{size.priceModifier.toFixed(2)}</span>
-                </Button>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <SizeDialog
+          open={showSizeDialog}
+          onOpenChange={setShowSizeDialog}
+          product={selectedProduct}
+          onSelectSize={addToCartWithSize}
+          onSelectSizeWithTemperature={addToCartWithSizeAndTemperature}
+          selectedTemperature={selectedTemperature}
+        />
+
+        <TemperatureDialog
+          open={showTemperatureDialog}
+          onOpenChange={setShowTemperatureDialog}
+          product={selectedProduct}
+          temperature={selectedTemperature}
+          onTemperatureChange={setSelectedTemperature}
+          onContinue={addToCartWithTemperature}
+        />
 
         {/* Cart & Payment Section */}
         <Dialog open={isCartOpen} onOpenChange={setIsCartOpen}>
@@ -405,25 +334,31 @@ export default function ProductMenu() {
             </DialogHeader>
             <div className="max-h-64 overflow-y-auto space-y-2">
               {cart.map((item, index) => {
-                const sizePrice = item.size ? SIZE_OPTIONS.find(s => s.value === item.size)?.priceModifier || 0 : 0;
+                const sizePrice = item.size
+                  ? SIZE_OPTIONS.find((s) => s.value === item.size)?.priceModifier || 0
+                  : 0;
                 const itemPrice = item.product.base_price + sizePrice;
                 return (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center border-b pb-2"
-                  >
+                  <div key={index} className="flex justify-between items-center border-b pb-2">
                     <div>
                       <p className="font-medium">
                         {item.product.name}
                         {item.size && (
                           <span className="text-sm text-muted-foreground ml-2">
-                            ({SIZE_OPTIONS.find(s => s.value === item.size)?.label})
+                            ({SIZE_OPTIONS.find((s) => s.value === item.size)?.label})
+                          </span>
+                        )}
+                        {item.temperature && (
+                          <span className="text-sm text-muted-foreground ml-2">
+                            ({item.temperature})
                           </span>
                         )}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        ₱{itemPrice.toFixed(2)}
-                      </p>
+                      <div className="flex gap-1 items-center">
+                        <p className="text-sm text-muted-foreground">
+                          ₱{itemPrice.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -439,10 +374,7 @@ export default function ProductMenu() {
             <div className="flex justify-between items-center mt-4">
               <p className="font-bold">Total: ₱{total.toFixed(2)}</p>
               <Button
-                onClick={() => {
-                  setShowConfirmation(false);
-                  startPayment();
-                }}
+                onClick={startPayment}
                 disabled={paymentLoading || scanMode}
                 className="flex gap-2"
               >
@@ -465,14 +397,7 @@ export default function ProductMenu() {
         </Dialog>
 
         {/* Payment Confirmation Dialog */}
-        <Dialog 
-          open={showConfirmation} 
-          onOpenChange={(open) => {
-            if (!open) {
-              cancelPayment();
-            }
-          }}
-        >
+        <Dialog open={showConfirmation} onOpenChange={cancelPayment}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Confirm Payment</DialogTitle>
@@ -485,7 +410,9 @@ export default function ProductMenu() {
                 <h4 className="font-medium mb-2">Your Order:</h4>
                 <ul className="max-h-40 overflow-y-auto border rounded-lg p-2">
                   {cart.map((item, index) => {
-                    const sizePrice = item.size ? SIZE_OPTIONS.find(s => s.value === item.size)?.priceModifier || 0 : 0;
+                    const sizePrice = item.size
+                      ? SIZE_OPTIONS.find((s) => s.value === item.size)?.priceModifier || 0
+                      : 0;
                     const itemPrice = item.product.base_price + sizePrice;
                     return (
                       <li key={index} className="flex justify-between py-1">
@@ -493,7 +420,14 @@ export default function ProductMenu() {
                           {item.product.name}
                           {item.size && (
                             <span className="text-xs text-muted-foreground ml-1">
-                              ({SIZE_OPTIONS.find(s => s.value === item.size)?.label})
+                              ({SIZE_OPTIONS.find((s) => s.value === item.size)?.label})
+                            </span>
+                          )}
+                          {item.product.temperature && item.product.temperature !== "none" && (
+                            <span className="text-xs ml-1">
+                              {item.product.temperature === "hot" && "hot"}
+                              {item.product.temperature === "cold" && "cold"}
+                              {item.product.temperature === "both" && "both"}
                             </span>
                           )}
                         </span>
@@ -534,7 +468,6 @@ export default function ProductMenu() {
           </DialogContent>
         </Dialog>
 
-        {/* Payment Processing Modal */}
         {paymentLoading && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <Card className="w-full max-w-md">

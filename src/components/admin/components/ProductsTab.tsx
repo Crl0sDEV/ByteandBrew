@@ -1,10 +1,12 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2, ImageIcon, Search } from "lucide-react";
-import { Product } from "../types";
-import { ProductForm } from "./ProductForm";
-import { useState, useEffect } from "react";
-import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+"use client"
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { PlusCircle, Pencil, Trash2, ImageIcon, Search } from "lucide-react"
+import type { Product } from "../types"
+import { ProductForm } from "./ProductForm"
+import { useState, useEffect } from "react"
+import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,10 +16,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+} from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Pagination,
   PaginationContent,
@@ -26,78 +28,167 @@ import {
   PaginationLink,
   PaginationEllipsis,
   PaginationNext,
-} from "@/components/ui/pagination";
+} from "@/components/ui/pagination"
 
 interface ProductsTabProps {
-  products: Product[];
-  loading: boolean;
-  onCreate: (product: Omit<Product, 'id' | 'created_at'>) => Promise<void>;
-  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
-  onDelete: (id: string, image_url: string | null) => Promise<void>;
+  products: Product[]
+  loading: boolean
+  onCreate: (product: Omit<Product, "id" | "created_at">) => Promise<void>
+  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
+  onDelete: (id: string, image_url: string | null) => Promise<void>
 }
 
-export function ProductsTab({ 
-  products, 
-  loading, 
-  onCreate, 
-  onUpdate, 
-  onDelete 
-}: ProductsTabProps) {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<{id: string, image_url: string | null} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
+export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }: ProductsTabProps) {
+  // Initialize state from localStorage or default values
+  const [isFormOpen, setIsFormOpen] = useState(() => {
+    const saved = localStorage.getItem("productFormOpen")
+    return saved ? JSON.parse(saved) : false
+  })
+
+  const [editingProduct, setEditingProduct] = useState<Product | null>(() => {
+    const saved = localStorage.getItem("editingProduct")
+    return saved ? JSON.parse(saved) : null
+  })
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(() => {
+    const saved = localStorage.getItem("deleteDialogOpen")
+    return saved ? JSON.parse(saved) : false
+  })
+
+  const [productToDelete, setProductToDelete] = useState<{ id: string; image_url: string | null } | null>(() => {
+    const saved = localStorage.getItem("productToDelete")
+    return saved ? JSON.parse(saved) : null
+  })
+
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // Search and pagination state
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const saved = localStorage.getItem("productSearchTerm")
+    return saved || ""
+  })
+
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = localStorage.getItem("productCurrentPage")
+    return saved ? Number.parseInt(saved, 10) : 1
+  })
+
+  const itemsPerPage = 10
+
+  // Persist state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("productFormOpen", JSON.stringify(isFormOpen))
+  }, [isFormOpen])
+
+  useEffect(() => {
+    localStorage.setItem("editingProduct", JSON.stringify(editingProduct))
+  }, [editingProduct])
+
+  useEffect(() => {
+    localStorage.setItem("deleteDialogOpen", JSON.stringify(deleteDialogOpen))
+  }, [deleteDialogOpen])
+
+  useEffect(() => {
+    localStorage.setItem("productToDelete", JSON.stringify(productToDelete))
+  }, [productToDelete])
+
+  useEffect(() => {
+    localStorage.setItem("productSearchTerm", searchTerm)
+  }, [searchTerm])
+
+  useEffect(() => {
+    localStorage.setItem("productCurrentPage", currentPage.toString())
+  }, [currentPage])
+
+  // Handle visibility change to prevent refresh issues
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Restore state from localStorage when tab becomes visible again
+        const formOpen = localStorage.getItem("productFormOpen")
+        if (formOpen) setIsFormOpen(JSON.parse(formOpen))
+
+        const editing = localStorage.getItem("editingProduct")
+        if (editing) setEditingProduct(JSON.parse(editing))
+
+        const deleteOpen = localStorage.getItem("deleteDialogOpen")
+        if (deleteOpen) setDeleteDialogOpen(JSON.parse(deleteOpen))
+
+        const toDelete = localStorage.getItem("productToDelete")
+        if (toDelete) setProductToDelete(JSON.parse(toDelete))
+
+        const search = localStorage.getItem("productSearchTerm")
+        if (search) setSearchTerm(search)
+
+        const page = localStorage.getItem("productCurrentPage")
+        if (page) setCurrentPage(Number.parseInt(page, 10))
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [])
 
   const handleDeleteClick = (product: Product) => {
-    setProductToDelete({ id: product.id, image_url: product.image_url });
-    setDeleteDialogOpen(true);
-  };
+    setProductToDelete({ id: product.id, image_url: product.image_url })
+    setDeleteDialogOpen(true)
+  }
 
   const handleConfirmDelete = async () => {
-    if (!productToDelete) return;
-    
-    setIsDeleting(true);
+    if (!productToDelete) return
+
+    setIsDeleting(true)
     try {
-      await onDelete(productToDelete.id, productToDelete.image_url);
-      toast.success("Product deleted successfully");
+      await onDelete(productToDelete.id, productToDelete.image_url)
+      toast.success("Product deleted successfully")
+
+      // Clear localStorage for delete dialog
+      localStorage.removeItem("deleteDialogOpen")
+      localStorage.removeItem("productToDelete")
     } catch (error) {
-      toast.error("Failed to delete product");
-      console.error("Error deleting product:", error);
+      toast.error("Failed to delete product")
+      console.error("Error deleting product:", error)
     } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-      setProductToDelete(null);
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+      setProductToDelete(null)
     }
-  };
+  }
+
+  // Clear form state when form is closed successfully
+  const handleFormClose = (success: boolean) => {
+    setIsFormOpen(false)
+    if (success) {
+      // Clear localStorage for form
+      localStorage.removeItem("productFormOpen")
+      localStorage.removeItem("editingProduct")
+      setEditingProduct(null)
+    }
+  }
 
   // Filter products based on search term
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem)
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber)
 
   // Reset to first page when search term changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+    setCurrentPage(1)
+  }, [searchTerm])
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading products...</div>;
+    return <div className="flex justify-center p-8">Loading products...</div>
   }
 
   return (
@@ -109,10 +200,10 @@ export function ProductsTab({
               <CardTitle>Products Management</CardTitle>
               <CardDescription>Manage your cafe products and menu items</CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={() => {
-                setEditingProduct(null);
-                setIsFormOpen(true);
+                setEditingProduct(null)
+                setIsFormOpen(true)
               }}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -142,6 +233,7 @@ export function ProductsTab({
                   <TableHead>Price</TableHead>
                   <TableHead>Points</TableHead>
                   <TableHead>Sizes</TableHead>
+                  <TableHead>Temperature</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -155,7 +247,7 @@ export function ProductsTab({
                       <TableCell>
                         {product.image_url ? (
                           <img
-                            src={product.image_url}
+                            src={product.image_url || "/placeholder.svg"}
                             alt={product.name}
                             className="w-12 h-12 object-cover rounded-md"
                           />
@@ -173,14 +265,17 @@ export function ProductsTab({
                       <TableCell>
                         {product.has_sizes ? (
                           <div className="flex flex-wrap gap-1">
-                            {product.sizes?.map(size => (
-                              <Badge key={size} variant="secondary">{size}</Badge>
+                            {product.sizes?.map((size) => (
+                              <Badge key={size} variant="secondary">
+                                {size}
+                              </Badge>
                             ))}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell>{product.temperature}</TableCell>
                       <TableCell>
                         <Badge variant={product.is_add_on ? "default" : "secondary"}>
                           {product.is_add_on ? "Add-on" : "Regular"}
@@ -188,7 +283,7 @@ export function ProductsTab({
                       </TableCell>
                       <TableCell>
                         <Badge variant={product.is_active ? "default" : "destructive"}>
-                          {product.is_active ? 'Active' : 'Inactive'}
+                          {product.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -197,17 +292,13 @@ export function ProductsTab({
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setEditingProduct(product);
-                              setIsFormOpen(true);
+                              setEditingProduct(product)
+                              setIsFormOpen(true)
                             }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDeleteClick(product)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteClick(product)}>
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
                         </div>
@@ -234,8 +325,8 @@ export function ProductsTab({
                     <PaginationPrevious
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage > 1) paginate(currentPage - 1);
+                        e.preventDefault()
+                        if (currentPage > 1) paginate(currentPage - 1)
                       }}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
@@ -243,19 +334,19 @@ export function ProductsTab({
 
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     // Show first 3 pages, current page, and last 2 pages
-                    let pageNum;
+                    let pageNum
                     if (totalPages <= 5) {
-                      pageNum = i + 1;
+                      pageNum = i + 1
                     } else if (currentPage <= 3) {
-                      pageNum = i + 1;
+                      pageNum = i + 1
                     } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
+                      pageNum = totalPages - 4 + i
                     } else {
-                      if (i === 0) pageNum = currentPage - 1;
-                      else if (i === 1) pageNum = currentPage;
-                      else if (i === 2) pageNum = currentPage + 1;
-                      else if (i === 3) pageNum = totalPages - 1;
-                      else pageNum = totalPages;
+                      if (i === 0) pageNum = currentPage - 1
+                      else if (i === 1) pageNum = currentPage
+                      else if (i === 2) pageNum = currentPage + 1
+                      else if (i === 3) pageNum = totalPages - 1
+                      else pageNum = totalPages
                     }
 
                     return (
@@ -263,15 +354,15 @@ export function ProductsTab({
                         <PaginationLink
                           href="#"
                           onClick={(e) => {
-                            e.preventDefault();
-                            paginate(pageNum);
+                            e.preventDefault()
+                            paginate(pageNum)
                           }}
                           isActive={currentPage === pageNum}
                         >
                           {pageNum}
                         </PaginationLink>
                       </PaginationItem>
-                    );
+                    )
                   })}
 
                   {totalPages > 5 && currentPage < totalPages - 2 && (
@@ -284,8 +375,8 @@ export function ProductsTab({
                     <PaginationNext
                       href="#"
                       onClick={(e) => {
-                        e.preventDefault();
-                        if (currentPage < totalPages) paginate(currentPage + 1);
+                        e.preventDefault()
+                        if (currentPage < totalPages) paginate(currentPage + 1)
                       }}
                       className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                     />
@@ -303,13 +394,12 @@ export function ProductsTab({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product
-              and remove its data from servers.
+              This action cannot be undone. This will permanently delete the product and remove its data from servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -320,14 +410,24 @@ export function ProductsTab({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Modified to pass onOpenChange with success status */}
       <ProductForm
         open={isFormOpen}
-        onOpenChange={setIsFormOpen}
+        onOpenChange={(open) => {
+          if (!open) handleFormClose(false)
+          else setIsFormOpen(open)
+        }}
         product={editingProduct}
-        onCreate={onCreate}
-        onUpdate={onUpdate}
+        onCreate={async (product) => {
+          await onCreate(product)
+          handleFormClose(true)
+        }}
+        onUpdate={async (id, updates) => {
+          await onUpdate(id, updates)
+          handleFormClose(true)
+        }}
         onDelete={onDelete}
       />
     </div>
-  );
+  )
 }

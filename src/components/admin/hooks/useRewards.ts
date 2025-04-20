@@ -1,67 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Reward } from '../types';
 import { deleteRewardImage, uploadRewardImage } from '@/lib/uploadImage';
+import { User } from '@supabase/supabase-js';
 
-export function useRewards(user: any, activeTab: string) {
+export function useRewards(user: User | null, shouldFetch: boolean) {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const createReward = async (reward: Omit<Reward, 'id' | 'created_at'>) => {
-    const { data, error } = await supabase
-      .from('rewards')
-      .insert([reward])
-      .select();
-    if (error) throw error;
-    return data?.[0];
-  };
+  const fetchRewards = useCallback(async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from("rewards")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  const uploadImage = async (file: File): Promise<string> => {
-    return uploadRewardImage(file);
-  };
+      if (error) throw error;
+      setRewards(data || []);
+    } catch (err) {
+      console.error("Error fetching rewards:", err);
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
-  const updateReward = async (id: string, updates: Partial<Reward>) => {
-    const { data, error } = await supabase
-      .from('rewards')
-      .update(updates)
-      .eq('id', id)
-      .select();
-    if (error) throw error;
-    return data?.[0];
-  };
+  const uploadImage = useCallback(async (file: File): Promise<string> => {
+    try {
+      return await uploadRewardImage(file);
+    } catch (err) {
+      console.error("Error uploading reward image:", err);
+      throw err;
+    }
+  }, []);
 
-  const deleteReward = async (id: string, image_url: string | null) => {
+  const createReward = useCallback(async (reward: Omit<Reward, 'id' | 'created_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('rewards')
+        .insert([reward])
+        .select();
+      if (error) throw error;
+      return data?.[0];
+    } catch (err) {
+      console.error("Error creating reward:", err);
+      throw err;
+    }
+  }, []);
+
+  const updateReward = useCallback(async (id: string, updates: Partial<Reward>) => {
+    try {
+      const { data, error } = await supabase
+        .from('rewards')
+        .update(updates)
+        .eq('id', id)
+        .select();
+      if (error) throw error;
+      return data?.[0];
+    } catch (err) {
+      console.error("Error updating reward:", err);
+      throw err;
+    }
+  }, []);
+
+  const deleteReward = useCallback(async (id: string, image_url: string | null) => {
     try {
       if (image_url) {
         await deleteRewardImage(image_url);
       }
       const { error } = await supabase.from('rewards').delete().eq('id', id);
       if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting reward:", error);
-      throw error;
+    } catch (err) {
+      console.error("Error deleting reward:", err);
+      throw err;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!user || activeTab !== 'rewards') return;
-
-    const fetchRewards = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("rewards")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setRewards(data || []);
-      } catch (error) {
-        console.error("Error fetching rewards:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!shouldFetch) return;
 
     fetchRewards();
 
@@ -69,22 +90,28 @@ export function useRewards(user: any, activeTab: string) {
       .channel("rewards-changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rewards" },
-        () => fetchRewards()
+        { 
+          event: "*", 
+          schema: "public", 
+          table: "rewards" 
+        },
+        () => shouldFetch && fetchRewards()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [user, activeTab]);
+  }, [shouldFetch, fetchRewards]);
 
   return { 
     rewards, 
-    loading, 
+    loading,
+    error,
     createReward, 
     updateReward, 
     deleteReward,
-    uploadImage
+    uploadImage,
+    refreshRewards: fetchRewards
   };
 }

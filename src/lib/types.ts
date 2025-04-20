@@ -27,6 +27,8 @@ export interface Profile {
     card_id: string;
     cards: Card;
     user?: Profile | null;
+    temperature: string;
+
   }
   
   export interface Member {
@@ -73,9 +75,16 @@ export interface Profile {
     sizes: string[];
     category: string;
     is_add_on: boolean; 
+    temperature: string;
   }
 
 export interface EnhancedTransaction extends Transaction {
     card: Card;
     user: Profile | null;
+  }
+
+   export interface CartItem {
+    product: Product;
+    size: string | null;
+    temperature: string | null; // Add temperature field
   }

@@ -79,6 +79,7 @@ export interface Profile {
     sizes: string[];
     category: string;
     is_add_on: boolean; 
+    temperature?: string;
   }
 
 export interface EnhancedTransaction extends Transaction {
