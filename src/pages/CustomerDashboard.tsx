@@ -1,5 +1,5 @@
 import { useUser } from "@supabase/auth-helpers-react";
-import Header from "@/components/Header";
+import Header from "@/components/Header copy";
 import { useCustomerData } from "../components/customer/hooks/useCustomerData";
 import { CustomerGreeting } from "../components/customer/components/CustomerGreeting";
 import { CardStats } from "../components/customer/components/CardStats";

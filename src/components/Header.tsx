@@ -1,8 +1,6 @@
-import { LogOut, UserCircle2, Settings, LayoutDashboard } from "lucide-react";
+"use client";
+
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,92 +8,82 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { Bell, BellDot } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { format } from "date-fns";
 
-export default function Header() {
-  const navigate = useNavigate();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+export function Header() {
+  const [pendingTransactions, setPendingTransactions] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        setUserEmail(userData.user.email ?? null);
-      }
+    fetchPendingTransactions(); // Initial fetch
+
+    const channel = supabase
+      .channel("realtime-transactions")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // Can be 'INSERT' | 'UPDATE' | 'DELETE' or '*'
+          schema: "public",
+          table: "transactions",
+        },
+        () => {
+          fetchPendingTransactions(); // Re-fetch on any change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    
-    fetchUserData();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Logged out successfully");
-    navigate("/");
-  };
+  const fetchPendingTransactions = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, created_at, amount, cards(uid)")
+      .eq("status", "Pending")
+      .order("created_at", { ascending: false });
 
-  const handleNavigateToDashboard = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error("Session expired, please login again");
-      navigate("/");
-      return;
+    if (!error && data) {
+      setPendingTransactions(data);
     }
-
-    const role = user.user_metadata?.role || 
-                 (await supabase.from('profiles').select('role').eq('id', user.id).single())?.data?.role;
-
-    if (role === 'admin') {
-      navigate("/admin");
-    } else {
-      navigate("/customer");
-    }
-  };
-
-  const handleAccountSettings = () => {
-    navigate("/account-settings");
   };
 
   return (
-    <header className=" sticky top-0 z-50 w-full px-6 py-4 bg-white shadow flex justify-between items-center">
-      {/* Left: Logo & Name */}
-      <div className="flex items-center space-x-2">
-        <img
-          src="/logo.png"
-          alt="Logo"
-          className="w-8 h-8 rounded-full object-contain"
-        />
-        <span className="text-lg font-bold text-custom">BYTE & BREW</span>
-      </div>
-
-      {/* Right: User Dropdown */}
+    <header className="sticky top-0 z-50 w-full px-6 py-4 bg-white shadow flex justify-end items-center gap-4">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            <UserCircle2 className="w-5 h-5" />
-            Profile
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-auto">
-          {/* User email as first item */}
-          {userEmail && (
-            <div className="px-2 py-1.5 text-sm font-medium text-gray-700">
-              {userEmail}
-            </div>
+        <DropdownMenuTrigger className="relative">
+          {pendingTransactions.length > 0 ? (
+            <BellDot className="w-6 h-6 text-red-600 animate-pulse" />
+          ) : (
+            <Bell className="w-6 h-6" />
           )}
+          {pendingTransactions.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 rounded-full">
+              {pendingTransactions.length}
+            </span>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent sideOffset={12} className="w-[320px] mr-2">
+
+          <div className="px-3 py-2 font-semibold text-sm">Notifications</div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleNavigateToDashboard}>
-            <LayoutDashboard className="w-4 h-4 mr-2" />
-            Dashboard
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleAccountSettings}>
-            <Settings className="w-4 h-4 mr-2" />
-            Account Settings
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </DropdownMenuItem>
+          {pendingTransactions.length === 0 ? (
+            <DropdownMenuItem disabled>No new transactions</DropdownMenuItem>
+          ) : (
+            pendingTransactions.slice(0, 5).map((txn) => (
+              <DropdownMenuItem key={txn.id} className="flex flex-col items-start">
+                <span className="font-medium">
+                  ₱{txn.amount.toFixed(2)} — Transaction ID: {txn.id}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Card: {txn.cards?.uid || "N/A"} •{" "}
+                  {format(new Date(txn.created_at), "MMM d, h:mm a")}
+                </span>
+              </DropdownMenuItem>
+            ))
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

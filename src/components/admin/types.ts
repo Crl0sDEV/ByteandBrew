@@ -65,6 +65,11 @@ export interface Profile {
     cardsIssued: number;
   }
 
+  export interface DailySales {
+    date: string;
+    amount: number;
+  }
+
   export interface Product {
     id: string;
     name: string;

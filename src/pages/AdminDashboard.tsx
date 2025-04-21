@@ -1,99 +1,91 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { useUser } from "@supabase/auth-helpers-react"
-import { useSearchParams } from "react-router-dom"
-import Header from "@/components/Header"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAdminStats } from "../components/admin/hooks/useAdminStats"
-import { useTransactions } from "../components/admin/hooks/useTransactions"
-import { useMembers } from "../components/admin/hooks/useMembers"
-import { useCards } from "../components/admin/hooks/useCards"
-import { useRewards } from "../components/admin/hooks/useRewards"
-import { useProducts } from "../components/admin/hooks/useProducts"
-import { StatCards } from "../components/admin/components/StatCards"
-import { TransactionsTab } from "../components/admin/components/TransactionsTab"
-import { MembersTab } from "../components/admin/components/MembersTab"
-import { LoyaltyTab } from "../components/admin/components/LoyaltyTab"
-import { RewardsTab } from "../components/admin/components/RewardsTab"
-import { ProductsTab } from "../components/admin/components/ProductsTab"
-import { ShoppingCart, Users, CreditCard, Gift, Settings } from "lucide-react"
-import { CoffeeIcon } from "../components/admin/CoffeeIcon"
+import { useState, useEffect, useCallback } from "react";
+import { useUser } from "@supabase/auth-helpers-react";
+import { useSearchParams } from "react-router-dom";
+import {Header} from "@/components/Header";
+import AccountSettings from "./AccountSettings";
+import { useAdminStats } from "../components/admin/hooks/useAdminStats";
+import { useTransactions } from "../components/admin/hooks/useTransactions";
+import { useMembers } from "../components/admin/hooks/useMembers";
+import { useCards } from "../components/admin/hooks/useCards";
+import { useRewards } from "../components/admin/hooks/useRewards";
+import { useProducts } from "../components/admin/hooks/useProducts";
+import { StatCards } from "../components/admin/components/StatCards";
+import { TransactionsTab } from "../components/admin/components/TransactionsTab";
+import { MembersTab } from "../components/admin/components/MembersTab";
+import { LoyaltyTab } from "../components/admin/components/LoyaltyTab";
+import { RewardsTab } from "../components/admin/components/RewardsTab";
+import { ProductsTab } from "../components/admin/components/ProductsTab";
+import {
+  ShoppingCart,
+  Users,
+  CreditCard,
+  Gift,
+  Settings,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react";
+import { CoffeeIcon } from "../components/admin/CoffeeIcon";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminDashboard() {
-  const user = useUser()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const initialTab = searchParams.get("tab") || "transactions"
-  const [activeTab, setActiveTab] = useState(initialTab)
+  const user = useUser();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "dashboard";
+  const [activeTab, setActiveTab] = useState(initialTab);
 
-  // Data fetching hooks
-  const { stats, loading: statsLoading } = useAdminStats(user)
-  const { transactions, loading: transactionsLoading } = useTransactions(user, activeTab === "transactions")
-  const { members, loading: membersLoading } = useMembers(user, activeTab === "members")
-  const { cards, loading: cardsLoading } = useCards(user, activeTab === "loyalty")
+  const { stats, loading: statsLoading } = useAdminStats(user);
+  const { transactions, loading: transactionsLoading } = useTransactions(
+    user,
+    activeTab === "transactions"
+  );
+  const { members, loading: membersLoading } = useMembers(
+    user,
+    activeTab === "members"
+  );
+  const { cards, loading: cardsLoading } = useCards(
+    user,
+    activeTab === "loyalty"
+  );
   const {
     products,
     loading: productsLoading,
     createProduct,
     updateProduct,
     deleteProduct,
-  } = useProducts(user, activeTab === "products")
+  } = useProducts(user, activeTab === "products");
   const {
     rewards,
     loading: rewardsLoading,
     createReward,
     updateReward,
     deleteReward,
-  } = useRewards(user, activeTab === "rewards")
+  } = useRewards(user, activeTab === "rewards");
 
-  // Update URL when tab changes
   useEffect(() => {
-    setSearchParams({ tab: activeTab }, { replace: true })
-    // Save current tab to localStorage
-    localStorage.setItem("adminDashboardTab", activeTab)
-  }, [activeTab, setSearchParams])
-
-  // Handle browser back/forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      const currentTab = searchParams.get("tab") || "transactions"
-      if (currentTab !== activeTab) {
-        setActiveTab(currentTab)
-      }
-    }
-
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
-  }, [activeTab, searchParams])
-
-  // Prevent refresh on tab visibility change
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Don't do anything that would cause a refresh when tab becomes visible again
-      if (document.visibilityState === "visible") {
-        // Restore the tab from localStorage if needed
-        const savedTab = localStorage.getItem("adminDashboardTab")
-        if (savedTab && savedTab !== activeTab) {
-          setActiveTab(savedTab)
-        }
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [activeTab])
+    setSearchParams({ tab: activeTab }, { replace: true });
+    localStorage.setItem("adminDashboardTab", activeTab);
+  }, [activeTab, setSearchParams]);
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab)
-  }, [])
+    setActiveTab(tab);
+  }, []);
 
   const renderTabContent = useCallback(
     (tab: string) => {
       switch (tab) {
+        case "dashboard":
+          return <StatCards stats={stats} />;
         case "transactions":
-          return <TransactionsTab transactions={transactions} loading={transactionsLoading} />
+          return (
+            <TransactionsTab
+              transactions={transactions}
+              loading={transactionsLoading}
+            />
+          );
         case "members":
-          return <MembersTab members={members} loading={membersLoading} />
+          return <MembersTab members={members} loading={membersLoading} />;
         case "loyalty":
           return (
             <LoyaltyTab
@@ -104,7 +96,7 @@ export default function AdminDashboard() {
               onCardReload={async () => {}}
               onCardDeactivate={async () => {}}
             />
-          )
+          );
         case "rewards":
           return (
             <RewardsTab
@@ -114,7 +106,7 @@ export default function AdminDashboard() {
               onUpdate={updateReward}
               onDelete={deleteReward}
             />
-          )
+          );
         case "products":
           return (
             <ProductsTab
@@ -123,17 +115,16 @@ export default function AdminDashboard() {
               onCreate={createProduct}
               onUpdate={updateProduct}
               onDelete={deleteProduct}
-              // Pass key to force component to maintain its state
-              key="products-tab"
             />
-          )
+          );
         case "settings":
-          return <div className="text-muted-foreground">Settings configuration coming soon...</div>
+          return <AccountSettings />;
         default:
-          return null
+          return <StatCards stats={stats} />;
       }
     },
     [
+      stats,
       transactions,
       transactionsLoading,
       members,
@@ -150,8 +141,8 @@ export default function AdminDashboard() {
       createProduct,
       updateProduct,
       deleteProduct,
-    ],
-  )
+    ]
+  );
 
   if (statsLoading) {
     return (
@@ -163,52 +154,82 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
+  const menuItems = [
+    { value: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { value: "transactions", icon: ShoppingCart, label: "Transactions" },
+    { value: "members", icon: Users, label: "Members" },
+    { value: "loyalty", icon: CreditCard, label: "Loyalty" },
+    { value: "rewards", icon: Gift, label: "Rewards" },
+    { value: "products", icon: CoffeeIcon, label: "Products" },
+    { value: "settings", icon: Settings, label: "Settings" },
+  ];
+
   return (
-    <div className="p-4 md:p-8">
-      <Header />
+    <div className="flex min-h-screen bg-background">
+      {/* Sidebar */}
+      <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
+  {/* Top: Logo & Nav */}
+  <div>
+    <div className="flex items-center gap-2 mb-6">
+      <img src="/logo.png" alt="Byte & Brew Logo" className="w-8 h-8 rounded-full object-contain" />
+      <span className="text-xl font-bold">BYTE & BREW</span>
+    </div>
+    <nav className="flex flex-col gap-2">
+      {menuItems.map((item) => (
+        <button
+          key={item.value}
+          onClick={() => handleTabChange(item.value)}
+          className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full text-left ${
+            activeTab === item.value
+              ? "bg-primary text-white"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <item.icon className="w-4 h-4" />
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
+  </div>
 
-      <div className="mt-6 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage loyalty cards, transactions, rewards, and products</p>
-        </div>
+  {/* Bottom: Logout Button */}
+  <div>
+    <button
+      onClick={async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error("Logout failed:", error.message);
+        } else {
+          window.location.href = "/"; // redirect after logout
+        }
+      }}
+      className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground w-full text-left"
+    >
+      <LogOut className="w-4 h-4" />
+      <span>Logout</span>
+    </button>
+  </div>
+</aside>
 
-        <StatCards stats={stats} />
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <TabsTrigger value="transactions" className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4" />
-              <span className="hidden sm:inline">Transactions</span>
-            </TabsTrigger>
-            <TabsTrigger value="members" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Members</span>
-            </TabsTrigger>
-            <TabsTrigger value="loyalty" className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Loyalty</span>
-            </TabsTrigger>
-            <TabsTrigger value="rewards" className="flex items-center gap-2">
-              <Gift className="w-4 h-4" />
-              <span className="hidden sm:inline">Rewards</span>
-            </TabsTrigger>
-            <TabsTrigger value="products" className="flex items-center gap-2">
-              <CoffeeIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Products</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="pt-4">{renderTabContent(activeTab)}</div>
-        </Tabs>
+      {/* Main Content Area */}
+      <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full">
+        <Header />
+        <main className="p-4 md:p-8 flex-1 w-full overflow-x-hidden">
+          {activeTab === "dashboard" && (
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+              <p className="text-muted-foreground">
+                Overview of your loyalty program
+              </p>
+            </div>
+          )}
+          {renderTabContent(activeTab)}
+        </main>
       </div>
     </div>
-  )
+  );
 }

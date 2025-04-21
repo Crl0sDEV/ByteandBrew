@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import Header from "@/components/Header";
 import { toast } from "sonner";
 
 export default function AccountSettings() {
@@ -76,7 +75,6 @@ export default function AccountSettings() {
 
   return (
     <div className="p-4 md:p-8">
-      <Header />
       
       <Card className="max-w-2xl mx-auto mt-6">
         <CardHeader>
