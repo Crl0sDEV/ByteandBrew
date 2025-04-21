@@ -1,206 +1,275 @@
-"use client"
+"use client";
 
-import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { ShoppingCart, Users, Gift, CreditCard, Download } from "lucide-react"
-import type { AdminStats } from "../types"
-import { useEffect, useState, useRef } from "react"
-import { supabase } from "@/lib/supabaseClient"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Tooltip, ResponsiveContainer } from "recharts"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
+import {
+  Card as UICard,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
+import { ShoppingCart, Users, Gift, CreditCard, Download } from "lucide-react";
+import type { AdminStats } from "../types";
+import { useEffect, useState, useRef } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface StatCardsProps {
-  stats: AdminStats
+  stats: AdminStats;
 }
 
 interface TransactionData {
-  date: string
-  payment: number
-  reload: number
-  total: number
-  payment_amount: number
-  reload_amount: number
-  total_amount: number
+  date: string;
+  payment: number;
+  reload: number;
+  total: number;
+  payment_amount: number;
+  reload_amount: number;
+  total_amount: number;
 }
 
-type TimeRange = "7days" | "30days" | "90days" | "year"
-type ChartView = "count" | "amount"
+type TimeRange = "7days" | "30days" | "90days" | "year";
+type ChartView = "count" | "amount";
 
 export function StatCards({ stats }: StatCardsProps) {
-  const [transactionData, setTransactionData] = useState<TransactionData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [timeRange, setTimeRange] = useState<TimeRange>("30days")
-  const [chartView, setChartView] = useState<ChartView>("count")
-  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const [transactionData, setTransactionData] = useState<TransactionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>("30days");
+  const [chartView, setChartView] = useState<ChartView>("count");
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging
   useEffect(() => {
     if (transactionData.length > 0) {
-      console.log("Transaction data loaded:", transactionData.length, "records")
+      console.log(
+        "Transaction data loaded:",
+        transactionData.length,
+        "records"
+      );
     }
-  }, [transactionData])
+  }, [transactionData]);
 
   useEffect(() => {
     const fetchTransactionData = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        // Get the current date and date based on selected time range
-        const today = new Date()
-        const startDate = new Date()
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
 
         switch (timeRange) {
           case "7days":
-            startDate.setDate(today.getDate() - 7)
-            break
+            startDate.setDate(today.getDate() - 7);
+            break;
           case "30days":
-            startDate.setDate(today.getDate() - 30)
-            break
+            startDate.setDate(today.getDate() - 30);
+            break;
           case "90days":
-            startDate.setDate(today.getDate() - 90)
-            break
+            startDate.setDate(today.getDate() - 90);
+            break;
           case "year":
-            startDate.setFullYear(today.getFullYear() - 1)
-            break
+            startDate.setFullYear(today.getFullYear() - 1);
+            break;
         }
 
-        // Format dates to YYYY-MM-DD
-        const formatDate = (date: Date) => date.toISOString().split("T")[0]
+        const formatDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
 
-        console.log("Fetching transactions from", formatDate(startDate), "to", formatDate(today))
+        const formatEndDate = (date: Date) => {
+          return date.toISOString();
+        };
 
-        // IMPORTANT: Modified query to match your actual schema
-        // Removed the status filter since your schema might use a different field or value
+        console.log(
+          "Fetching transactions from",
+          formatDate(startDate),
+          "to",
+          formatDate(today),
+          "(including today)"
+        );
+
         const { data, error: supabaseError } = await supabase
           .from("transactions")
-          .select("*") // Select all fields to debug
+          .select("*")
           .gte("created_at", formatDate(startDate))
-          .lte("created_at", formatDate(today))
-          .order("created_at", { ascending: true })
+          .lte("created_at", formatEndDate(today))
+          .order("created_at", { ascending: true });
 
-        if (supabaseError) throw supabaseError
+        if (supabaseError) throw supabaseError;
 
-        console.log("Raw transaction data:", data?.length || 0, "records")
-        console.log("Sample transaction:", data?.[0])
+        console.log("Raw transaction data:", data?.length || 0, "records");
 
-        // If no data, try a more permissive query
+        if (data && data.length > 0) {
+          console.log("First transaction date:", data[0].created_at);
+          console.log(
+            "Last transaction date:",
+            data[data.length - 1].created_at
+          );
+
+          const todayStr = formatDate(today);
+          const todaysData = data.filter((t) => {
+            const transactionDate = new Date(t.created_at)
+              .toISOString()
+              .split("T")[0];
+            return transactionDate === todayStr;
+          });
+
+          console.log("Today's transactions:", todaysData.length, "records");
+          if (todaysData.length > 0) {
+            console.log("Sample today's transaction:", todaysData[0]);
+          }
+        }
+
         if (!data || data.length === 0) {
-          console.log("No data with filters, trying without date filters")
+          console.log("No data with filters, trying without date filters");
 
-          const { data: allData, error: allDataError } = await supabase.from("transactions").select("*").limit(100)
+          const { data: allData, error: allDataError } = await supabase
+            .from("transactions")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(100);
 
-          if (allDataError) throw allDataError
+          if (allDataError) throw allDataError;
 
-          console.log("All transactions (up to 100):", allData?.length || 0)
-          console.log("Sample transaction from all data:", allData?.[0])
+          console.log("All transactions (up to 100):", allData?.length || 0);
 
-          // If still no data, use sample data
-          if (!allData || allData.length === 0) {
-            console.log("No data returned, creating sample data")
-            const sampleData = generateSampleData(startDate, today)
-            setTransactionData(sampleData)
-            setLoading(false)
-            return
+          if (allData && allData.length > 0) {
+            console.log("Most recent transaction:", allData[0]);
+            console.log(
+              "Oldest transaction in sample:",
+              allData[allData.length - 1]
+            );
+
+            const processedData = processTransactionData(
+              allData,
+              startDate,
+              today
+            );
+            setTransactionData(processedData);
+            setLoading(false);
+            return;
+          } else {
+            console.log("No data returned, creating sample data");
+            const sampleData = generateSampleData(startDate, today);
+            setTransactionData(sampleData);
+            setLoading(false);
+            return;
           }
-
-          // Use the data without filters
         }
 
-        // Group by date and transaction type
-        const transactionsByDate: Record<string, TransactionData> = {}
-
-        // Initialize dates in the range
-        const currentDate = new Date(startDate)
-        while (currentDate <= today) {
-          const dateStr = formatDate(currentDate)
-          transactionsByDate[dateStr] = {
-            date: dateStr,
-            payment: 0,
-            reload: 0,
-            total: 0,
-            payment_amount: 0,
-            reload_amount: 0,
-            total_amount: 0,
-          }
-          currentDate.setDate(currentDate.getDate() + 1)
-        }
-
-        // Fill with actual data - MODIFIED to match your schema
-        data.forEach((transaction) => {
-          if (!transaction.created_at) return
-
-          const date = new Date(transaction.created_at).toISOString().split("T")[0]
-
-          if (!transactionsByDate[date]) {
-            transactionsByDate[date] = {
-              date,
-              payment: 0,
-              reload: 0,
-              total: 0,
-              payment_amount: 0,
-              reload_amount: 0,
-              total_amount: 0,
-            }
-          }
-
-          // Determine transaction type based on your schema
-          // Adjust this logic based on how transaction types are stored in your database
-          const isPayment = transaction.type === "payment"
-          const isReload = transaction.type === "reload"
-
-          // Get amount from the correct field based on your schema
-          const amount = Number(transaction.amount) || 0
-
-          // Increment counts
-          if (isPayment) {
-            transactionsByDate[date].payment += 1
-            transactionsByDate[date].payment_amount += amount
-          } else if (isReload) {
-            transactionsByDate[date].reload += 1
-            transactionsByDate[date].reload_amount += amount
-          }
-
-          transactionsByDate[date].total += 1
-          transactionsByDate[date].total_amount += amount
-        })
-
-        // Convert to array and sort by date
-        const formattedData = Object.values(transactionsByDate).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-        )
-
-        console.log("Processed transaction data:", formattedData.length, "days")
-        setTransactionData(formattedData)
+        const processedData = processTransactionData(data, startDate, today);
+        setTransactionData(processedData);
       } catch (err) {
-        console.error("Error fetching transaction data:", err)
-        setError("Failed to load transaction data")
+        console.error("Error fetching transaction data:", err);
+        setError("Failed to load transaction data");
 
-        // Create sample data on error
-        const today = new Date()
-        const startDate = new Date()
-        startDate.setDate(today.getDate() - 30)
-        const sampleData = generateSampleData(startDate, today)
-        setTransactionData(sampleData)
+        const today = new Date();
+        const startDate = new Date();
+        startDate.setDate(today.getDate() - 30);
+        const sampleData = generateSampleData(startDate, today);
+        setTransactionData(sampleData);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+
+    fetchTransactionData();
+  }, [timeRange]);
+
+  const processTransactionData = (
+    data: any[],
+    startDate: Date,
+    endDate: Date
+  ) => {
+    const transactionsByDate: Record<string, TransactionData> = {};
+
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = formatDate(currentDate);
+      transactionsByDate[dateStr] = {
+        date: dateStr,
+        payment: 0,
+        reload: 0,
+        total: 0,
+        payment_amount: 0,
+        reload_amount: 0,
+        total_amount: 0,
+      };
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    fetchTransactionData()
-  }, [timeRange])
+    data.forEach((transaction) => {
+      if (!transaction.created_at) return;
 
-  // Generate sample data for testing
-  const generateSampleData = (startDate: Date, endDate: Date): TransactionData[] => {
-    const data: TransactionData[] = []
-    const currentDate = new Date(startDate)
+      const transactionDate = new Date(transaction.created_at);
+      const date = formatDate(transactionDate);
+
+      if (!transactionsByDate[date]) return;
+
+      const isPayment = transaction.type === "payment";
+      const isReload = transaction.type === "reload";
+
+      const amount = Number(transaction.amount) || 0;
+
+      if (isPayment) {
+        transactionsByDate[date].payment += 1;
+        transactionsByDate[date].payment_amount += amount;
+      } else if (isReload) {
+        transactionsByDate[date].reload += 1;
+        transactionsByDate[date].reload_amount += amount;
+      }
+
+      transactionsByDate[date].total += 1;
+      transactionsByDate[date].total_amount += amount;
+    });
+
+    return Object.values(transactionsByDate).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  };
+
+  const generateSampleData = (
+    startDate: Date,
+    endDate: Date
+  ): TransactionData[] => {
+    const data: TransactionData[] = [];
+    const currentDate = new Date(startDate);
 
     while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split("T")[0]
-      const paymentCount = Math.floor(Math.random() * 10) + 1
-      const reloadCount = Math.floor(Math.random() * 8) + 1
+      const dateStr = currentDate.toISOString().split("T")[0];
+      const paymentCount = Math.floor(Math.random() * 10) + 1;
+      const reloadCount = Math.floor(Math.random() * 8) + 1;
 
       data.push({
         date: dateStr,
@@ -209,68 +278,82 @@ export function StatCards({ stats }: StatCardsProps) {
         total: paymentCount + reloadCount,
         payment_amount: paymentCount * 100 + Math.floor(Math.random() * 500),
         reload_amount: reloadCount * 200 + Math.floor(Math.random() * 300),
-        total_amount: 0, // Will be calculated below
-      })
+        total_amount: 0,
+      });
 
-      // Calculate total amount
-      data[data.length - 1].total_amount = data[data.length - 1].payment_amount + data[data.length - 1].reload_amount
+      data[data.length - 1].total_amount =
+        data[data.length - 1].payment_amount +
+        data[data.length - 1].reload_amount;
 
-      currentDate.setDate(currentDate.getDate() + 1)
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    return data
-  }
+    return data;
+  };
 
-  // Get the appropriate data keys based on the selected view
   const getDataKeys = () => {
     if (chartView === "count") {
-      return ["payment", "reload"]
+      return ["payment", "reload"];
     } else {
-      return ["payment_amount", "reload_amount"]
+      return ["payment_amount", "reload_amount"];
     }
-  }
+  };
 
-  // Format the tooltip value based on the chart view
   const formatTooltipValue = (value: any, name: any) => {
     if (name === "Payment Amount" || name === "Reload Amount") {
-      return `₱${Number(value).toLocaleString()}`
+      return `₱${Number(value).toLocaleString()}`;
     }
-    return value
-  }
+    return value;
+  };
 
-  // Format the Y-axis ticks based on the chart view
   const formatYAxisTick = (value: any): string => {
     if (chartView === "amount") {
-      return `₱${value}`
+      return `₱${value}`;
     }
-    return String(value)
-  }
+    return String(value);
+  };
 
-  // Export chart data as CSV
   const exportCSV = () => {
-    if (!transactionData.length) return
+    if (!transactionData.length) return;
 
-    const headers = ["Date", "Payments", "Reloads", "Payment Amount", "Reload Amount", "Total Amount"]
+    const headers = [
+      "Date",
+      "Payments",
+      "Reloads",
+      "Payment Amount",
+      "Reload Amount",
+      "Total Amount",
+    ];
     const csvRows = [
       headers.join(","),
       ...transactionData.map((row) => {
-        const date = new Date(row.date).toLocaleDateString()
-        return [date, row.payment, row.reload, row.payment_amount, row.reload_amount, row.total_amount].join(",")
+        const date = new Date(row.date).toLocaleDateString();
+        return [
+          date,
+          row.payment,
+          row.reload,
+          row.payment_amount,
+          row.reload_amount,
+          row.total_amount,
+        ].join(",");
       }),
-    ]
+    ];
 
-    const csvString = csvRows.join("\n")
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
 
-    link.setAttribute("href", url)
-    link.setAttribute("download", `transactions_${timeRange}_${new Date().toISOString().split("T")[0]}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `transactions_${timeRange}_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-4">
@@ -281,13 +364,17 @@ export function StatCards({ stats }: StatCardsProps) {
             <ShoppingCart className="w-4 h-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{stats.todaySales.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ₱{stats.todaySales.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">View details</p>
           </CardContent>
         </UICard>
         <UICard>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Members
+            </CardTitle>
             <Users className="w-4 h-4" />
           </CardHeader>
           <CardContent>
@@ -297,7 +384,9 @@ export function StatCards({ stats }: StatCardsProps) {
         </UICard>
         <UICard>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Points Redeemed</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Points Redeemed
+            </CardTitle>
             <Gift className="w-4 h-4" />
           </CardHeader>
           <CardContent>
@@ -324,11 +413,17 @@ export function StatCards({ stats }: StatCardsProps) {
             <div>
               <CardTitle>Transaction Overview</CardTitle>
               <CardDescription>
-                {chartView === "count" ? "Number of transactions" : "Transaction amounts"} by type
+                {chartView === "count"
+                  ? "Number of transactions"
+                  : "Transaction amounts"}{" "}
+                by type
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+              <Select
+                value={timeRange}
+                onValueChange={(value) => setTimeRange(value as TimeRange)}
+              >
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Select range" />
                 </SelectTrigger>
@@ -340,14 +435,22 @@ export function StatCards({ stats }: StatCardsProps) {
                 </SelectContent>
               </Select>
 
-              <Tabs value={chartView} onValueChange={(value) => setChartView(value as ChartView)}>
+              <Tabs
+                value={chartView}
+                onValueChange={(value) => setChartView(value as ChartView)}
+              >
                 <TabsList>
                   <TabsTrigger value="count">Count</TabsTrigger>
                   <TabsTrigger value="amount">Amount</TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <Button variant="outline" size="sm" onClick={exportCSV} disabled={!transactionData.length}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportCSV}
+                disabled={!transactionData.length}
+              >
                 <Download className="h-4 w-4 mr-1" />
                 Export
               </Button>
@@ -370,16 +473,19 @@ export function StatCards({ stats }: StatCardsProps) {
               style={{ minHeight: "400px", position: "relative" }}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={transactionData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <BarChart
+                  data={transactionData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(value) => {
-                      const date = new Date(value)
+                      const date = new Date(value);
                       return date.toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
-                      })
+                      });
                     }}
                     axisLine={false}
                     tickLine={false}
@@ -388,17 +494,22 @@ export function StatCards({ stats }: StatCardsProps) {
                     textAnchor="end"
                     height={60}
                   />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={formatYAxisTick} tickMargin={8} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={formatYAxisTick}
+                    tickMargin={8}
+                  />
                   <Tooltip
                     formatter={formatTooltipValue}
                     labelFormatter={(label) => {
-                      const date = new Date(label)
+                      const date = new Date(label);
                       return date.toLocaleDateString("en-US", {
                         weekday: "short",
                         year: "numeric",
                         month: "short",
                         day: "numeric",
-                      })
+                      });
                     }}
                   />
                   <Legend verticalAlign="top" height={36} />
@@ -414,8 +525,8 @@ export function StatCards({ stats }: StatCardsProps) {
                             ? "Payment Amount"
                             : "Reload Amount"
                           : key.includes("payment")
-                            ? "Payments"
-                            : "Reloads"
+                          ? "Payments"
+                          : "Reloads"
                       }
                       stackId={chartView === "count" ? "stack" : undefined}
                     />
@@ -434,5 +545,5 @@ export function StatCards({ stats }: StatCardsProps) {
         </CardContent>
       </UICard>
     </div>
-  )
+  );
 }
