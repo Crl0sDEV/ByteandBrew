@@ -252,7 +252,7 @@ export default function ProductMenu() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen layout-container">
       <input
         ref={scanInputRef}
         type="text"
@@ -260,29 +260,40 @@ export default function ProductMenu() {
         autoComplete="off"
       />
 
-      <header className="bg-background sticky top-0 z-10 border-b p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-primary">BYTE & BREW</h1>
-        <div className="relative">
-          <Button
-            variant="secondary"
-            className="flex gap-2 relative"
-            onClick={() => setIsCartOpen(true)}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            <span>Cart</span>
-            {cart.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {cart.length}
-              </span>
-            )}
-          </Button>
-        </div>
-      </header>
+<header className="bg-background sticky top-0 z-10 border-b p-4 flex justify-between items-center">
+  {/* Left - Brand */}
+  <h1 className="text-2xl font-bold text-primary">BYTE & BREW</h1>
+
+  {/* Center - Navigation */}
+  <nav className="hidden md:flex gap-6 text-sm font-medium">
+    <a href="/" className="text-muted-foreground hover:text-primary transition-colors">Home</a>
+    <a href="/products" className="text-muted-foreground hover:text-primary transition-colors">Product</a>
+    <a href="/about" className="text-muted-foreground hover:text-primary transition-colors">About</a>
+  </nav>
+
+  {/* Right - Cart */}
+  <div className="relative">
+    <Button
+      variant="secondary"
+      className="flex gap-2 relative"
+      onClick={() => setIsCartOpen(true)}
+    >
+      <ShoppingCart className="w-5 h-5" />
+      <span>Cart</span>
+      {cart.length > 0 && (
+        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          {cart.length}
+        </span>
+      )}
+    </Button>
+  </div>
+</header>
+
 
       <div className="container mx-auto p-4">
         <div className="mb-6 flex items-center gap-4">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px] bg-background">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>

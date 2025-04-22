@@ -216,17 +216,9 @@ export default function AdminDashboard() {
 
 
       {/* Main Content Area */}
-      <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full">
+      <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-container">
         <Header />
         <main className="p-4 md:p-8 flex-1 w-full overflow-x-hidden">
-          {activeTab === "dashboard" && (
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-muted-foreground">
-                Overview of your loyalty program
-              </p>
-            </div>
-          )}
           {renderTabContent(activeTab)}
         </main>
       </div>
