@@ -650,7 +650,7 @@ const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
 </Dialog>
 
       {/* Cards Table */}
-      <UICard>
+      <UICard className="mt-6">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>

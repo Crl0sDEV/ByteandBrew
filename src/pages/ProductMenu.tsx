@@ -11,6 +11,7 @@ import ProductCard from "../components/menu/ProductCard";
 import { SIZE_OPTIONS, calculateCartTotals, getUniqueCategories } from "../components/menu/productHelpers";
 import SizeDialog from "../components/menu/SizeDialog";
 import TemperatureDialog from "../components/menu/TemperatureDialog";
+import Layout from "@/components/Layout/Layout";
 
 export default function ProductMenu() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -238,57 +239,29 @@ export default function ProductMenu() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader className="h-40 bg-muted rounded-t-lg" />
-            <CardContent className="h-6 bg-muted mt-2 rounded" />
-            <CardContent className="h-4 bg-muted mt-1 rounded w-1/2" />
-            <CardFooter className="h-10 bg-muted mt-2 rounded" />
-          </Card>
-        ))}
-      </div>
+      <Layout>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="h-40 bg-muted rounded-t-lg" />
+              <CardContent className="h-6 bg-muted mt-2 rounded" />
+              <CardContent className="h-4 bg-muted mt-1 rounded w-1/2" />
+              <CardFooter className="h-10 bg-muted mt-2 rounded" />
+            </Card>
+          ))}
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen layout-container">
+    <Layout cartCount={cart.length} showCartButton={true} onCartClick={() => setIsCartOpen(true)}>
       <input
         ref={scanInputRef}
         type="text"
         className="absolute opacity-0 w-0 h-0"
         autoComplete="off"
       />
-
-<header className="bg-background sticky top-0 z-10 border-b p-4 flex justify-between items-center">
-  {/* Left - Brand */}
-  <h1 className="text-2xl font-bold text-primary">BYTE & BREW</h1>
-
-  {/* Center - Navigation */}
-  <nav className="hidden md:flex gap-6 text-sm font-medium">
-    <a href="/" className="text-muted-foreground hover:text-primary transition-colors">Home</a>
-    <a href="/products" className="text-muted-foreground hover:text-primary transition-colors">Product</a>
-    <a href="/about" className="text-muted-foreground hover:text-primary transition-colors">About</a>
-  </nav>
-
-  {/* Right - Cart */}
-  <div className="relative">
-    <Button
-      variant="secondary"
-      className="flex gap-2 relative"
-      onClick={() => setIsCartOpen(true)}
-    >
-      <ShoppingCart className="w-5 h-5" />
-      <span>Cart</span>
-      {cart.length > 0 && (
-        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-          {cart.length}
-        </span>
-      )}
-    </Button>
-  </div>
-</header>
-
 
       <div className="container mx-auto p-4">
         <div className="mb-6 flex items-center gap-4">
@@ -499,6 +472,6 @@ export default function ProductMenu() {
           </div>
         )}
       </div>
-    </div>
+    </Layout>
   );
 }

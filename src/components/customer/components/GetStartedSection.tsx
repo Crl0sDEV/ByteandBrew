@@ -12,7 +12,7 @@ export function GetStartedSection({ hasCard }: GetStartedSectionProps) {
     <div className="bg-gray-50 p-6 rounded-lg border">
       <h2 className="text-xl font-semibold mb-2">Get Started with Loyalty Rewards</h2>
       <p className="text-gray-600 mb-4">
-        You don't have a loyalty card yet. Visit any of our stores to register and get your card to start earning points today!
+        You don't have a loyalty card yet. Visit our store to register and get your card to start earning points today!
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <UICard className="p-4">

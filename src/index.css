@@ -124,11 +124,19 @@ background-size: cover;
 }
 
 .text-custom {
-  color: #6e4e37;
+  color: #a57131;
 }
 
 .text-custom-dark {
   color: #d9c6b2;
+}
+
+.bg-custom {
+  background-color: #a57131,
+}
+
+.bg-custom-dark {
+  background-color: #d9c6b2
 }
 
 @layer base {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@supabase/auth-helpers-react";
 import { useSearchParams } from "react-router-dom";
-import {Header} from "@/components/Header";
+import { Header } from "@/components/Header";
 import AccountSettings from "./AccountSettings";
 import { useAdminStats } from "../components/admin/hooks/useAdminStats";
 import { useTransactions } from "../components/admin/hooks/useTransactions";
@@ -28,13 +28,16 @@ import {
 } from "lucide-react";
 import { CoffeeIcon } from "../components/admin/CoffeeIcon";
 import { supabase } from "@/lib/supabaseClient";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboard() {
   const user = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "dashboard";
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Use realtime-enabled hooks
   const { stats, loading: statsLoading } = useAdminStats(user);
   const { transactions, loading: transactionsLoading } = useTransactions(
     user,
@@ -62,6 +65,12 @@ export default function AdminDashboard() {
     updateReward,
     deleteReward,
   } = useRewards(user, activeTab === "rewards");
+
+  useEffect(() => {
+    if (!statsLoading && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [statsLoading, isInitialLoad]);
 
   useEffect(() => {
     setSearchParams({ tab: activeTab }, { replace: true });
@@ -144,14 +153,36 @@ export default function AdminDashboard() {
     ]
   );
 
-  if (statsLoading) {
+  if (isInitialLoad) {
     return (
-      <div className="p-8">
-        <div className="h-8 w-1/3 bg-muted rounded animate-pulse mb-4" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
-          ))}
+      <div className="flex min-h-screen bg-background">
+        {/* Sidebar Skeleton */}
+        <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <Skeleton className="w-8 h-8 rounded-full" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+            <div className="space-y-2">
+              {[...Array(7)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-10 w-full" />
+        </aside>
+
+        {/* Main Content Skeleton */}
+        <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full">
+          <Header />
+          <div className="p-8">
+            <Skeleton className="h-8 w-1/3 mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -171,49 +202,45 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
-  {/* Top: Logo & Nav */}
-  <div>
-    <div className="flex items-center gap-2 mb-6">
-      <img src="/logo.png" alt="Byte & Brew Logo" className="w-8 h-8 rounded-full object-contain" />
-      <span className="text-xl font-bold">BYTE & BREW</span>
-    </div>
-    <nav className="flex flex-col gap-2">
-      {menuItems.map((item) => (
-        <button
-          key={item.value}
-          onClick={() => handleTabChange(item.value)}
-          className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full text-left ${
-            activeTab === item.value
-              ? "bg-primary text-white"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          }`}
-        >
-          <item.icon className="w-4 h-4" />
-          <span>{item.label}</span>
-        </button>
-      ))}
-    </nav>
-  </div>
-
-  {/* Bottom: Logout Button */}
-  <div>
-    <button
-      onClick={async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error("Logout failed:", error.message);
-        } else {
-          window.location.href = "/"; // redirect after logout
-        }
-      }}
-      className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground w-full text-left"
-    >
-      <LogOut className="w-4 h-4" />
-      <span>Logout</span>
-    </button>
-  </div>
-</aside>
-
+        <div>
+          <div className="flex items-center gap-2 mb-6">
+            <img src="/logo.png" alt="Byte & Brew Logo" className="w-8 h-8 rounded-full object-contain" />
+            <span className="text-xl font-bold">BYTE & BREW</span>
+          </div>
+          <nav className="flex flex-col gap-2">
+            {menuItems.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => handleTabChange(item.value)}
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full text-left ${
+                  activeTab === item.value
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div>
+          <button
+            onClick={async () => {
+              const { error } = await supabase.auth.signOut();
+              if (error) {
+                console.error("Logout failed:", error.message);
+              } else {
+                window.location.href = "/";
+              }
+            }}
+            className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground w-full text-left"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
 
       {/* Main Content Area */}
       <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-container">
