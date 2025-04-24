@@ -66,8 +66,8 @@ export function Header() {
   const fetchPendingTransactions = async () => {
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, created_at, amount, cards(uid), type")
-      .eq("status", "Pending")
+      .select("id, created_at, points, cards(uid), type")
+      .eq("status", "Completed")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -113,7 +113,7 @@ export function Header() {
               pendingTransactions.slice(0, 5).map((txn) => (
                 <DropdownMenuItem key={txn.id} className="flex flex-col items-start">
                   <span className="font-medium">
-                    ₱{txn.amount.toFixed(2)} — Type: {txn.type}
+                    {txn.points || 0}points — Type: {txn.type}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Card: {txn.cards?.uid || "N/A"} •{" "}

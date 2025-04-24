@@ -18,6 +18,7 @@ export interface Profile {
   }
   
   export interface Transaction {
+    points: number;
     id: string;
     amount: number;
     item_count: number;

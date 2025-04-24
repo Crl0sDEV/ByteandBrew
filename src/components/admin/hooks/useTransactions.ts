@@ -20,6 +20,7 @@ export function useTransactions(user: User | null, shouldFetch: boolean) {
         .select(`
           id,
           amount,
+          points,
           item_count,
           type,
           status,

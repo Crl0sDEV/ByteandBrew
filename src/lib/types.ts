@@ -28,7 +28,7 @@ export interface Profile {
     cards: Card;
     user?: Profile | null;
     temperature: string;
-
+    points: number;
   }
   
   export interface Member {
