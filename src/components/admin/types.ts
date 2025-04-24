@@ -33,6 +33,7 @@ export interface Profile {
   category: string;
   is_add_on: boolean;
   price: number;
+  reference_number: string;
   }
   
   export interface Member {

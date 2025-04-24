@@ -1,16 +1,9 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import TemperatureBadge from "./TemperatureBadge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/lib/types";
+import TemperatureBadge from "./TemperatureBadge";
 
-export default function ProductCard({
-  product,
-  onAddToCart,
-}: {
-  product: Product;
-  onAddToCart: (product: Product) => void;
-}) {
+export default function ProductCard({ product }: { product: Product }) {
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow !p-0">
       <div className="relative aspect-square w-full">
@@ -52,30 +45,15 @@ export default function ProductCard({
         </p>
 
         {/* Price section */}
-        <div className="mt-auto pt-4 h-[1rem]">
-          {product.has_sizes ? (
+        <div className="mt-auto pt-4">
+          <p className="font-bold text-lg">₱{product.base_price.toFixed(2)}</p>
+          {product.has_sizes && (
             <p className="text-xs text-muted-foreground mt-1">
               *Available in multiple sizes
             </p>
-          ) : (
-            <div className="h-[1.25rem]"></div>
           )}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <div className="flex items-center w-full gap-2">
-          <div className="w-[30%] text-right pr-2">
-            <p className="font-bold text-lg">₱{product.base_price.toFixed(2)}</p>
-          </div>
-          <Button
-            onClick={() => onAddToCart(product)}
-            className="w-[70%]"
-            size="sm"
-          >
-            Add to Cart
-          </Button>
-        </div>
-      </CardFooter>
     </Card>
   );
 }

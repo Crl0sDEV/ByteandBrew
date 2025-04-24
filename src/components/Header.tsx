@@ -66,7 +66,7 @@ export function Header() {
   const fetchPendingTransactions = async () => {
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, created_at, amount, cards(uid)")
+      .select("id, created_at, amount, cards(uid), type")
       .eq("status", "Pending")
       .order("created_at", { ascending: false });
 
@@ -108,12 +108,12 @@ export function Header() {
             <div className="px-3 py-2 font-semibold text-sm">Notifications</div>
             <DropdownMenuSeparator />
             {pendingTransactions.length === 0 ? (
-              <DropdownMenuItem disabled>No new transactions</DropdownMenuItem>
+              <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
             ) : (
               pendingTransactions.slice(0, 5).map((txn) => (
                 <DropdownMenuItem key={txn.id} className="flex flex-col items-start">
                   <span className="font-medium">
-                    ₱{txn.amount.toFixed(2)} — Transaction ID: {txn.id}
+                    ₱{txn.amount.toFixed(2)} — Type: {txn.type}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Card: {txn.cards?.uid || "N/A"} •{" "}

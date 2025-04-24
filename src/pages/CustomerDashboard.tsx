@@ -12,7 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CustomerDashboard() {
   const user = useUser();
-  const { customerData, loading } = useCustomerData(user);
+  const { 
+    customerData, 
+    loading, 
+    refetch: refetchCustomerData 
+  } = useCustomerData(user);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Track initial load separately to prevent flash of loading state
@@ -71,20 +75,19 @@ export default function CustomerDashboard() {
           balance={customerData.balance}
           points={customerData.points}
           pointsToNextReward={customerData.pointsToNextReward}
-          transactionCount={customerData.recentTransactions.length}
+          cardId={customerData.cardId || ''} // Assuming cardId is in customerData
+          onReloadSuccess={() => refetchCustomerData()} // Use the refetch from useCustomerData
         />
 
         {customerData.hasCard ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <TransactionsSection 
               transactions={customerData.recentTransactions} 
-              // Add key to force re-render when transactions update
               key={`transactions-${customerData.recentTransactions.length}`}
             />
             <RewardsSection 
               rewards={customerData.availableRewards} 
               points={customerData.points}
-              // Add key to force re-render when rewards update
               key={`rewards-${customerData.availableRewards.length}`}
             />
           </div>

@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { ShoppingCart } from "lucide-react";
 
 export default function Header() {
   return (
