@@ -8,11 +8,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Bell, BellDot } from "lucide-react";
+import { Bell, BellDot, Check } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 interface Notification {
   id: string;
@@ -28,13 +34,17 @@ export function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [selectedNotification, setSelectedNotification] =
+    useState<Notification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
       if (error) {
         console.error("Error fetching user:", error);
         return;
@@ -47,11 +57,11 @@ export function Header() {
 
     const fetchProfile = async (userId: string) => {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .single();
-      
+
       if (error) {
         console.error("Error fetching profile:", error);
         return;
@@ -72,7 +82,7 @@ export function Header() {
           event: "*",
           schema: "public",
           table: "transactions",
-          filter: "status=eq.Completed"
+          filter: "status=eq.Completed",
         },
         () => {
           fetchNotifications();
@@ -99,7 +109,7 @@ export function Header() {
 
     if (data) {
       setNotifications(data);
-      const unread = data.filter(n => !n.read).length;
+      const unread = data.filter((n) => !n.read).length;
       setUnreadCount(unread);
     }
   };
@@ -115,13 +125,18 @@ export function Header() {
       return;
     }
 
-    setNotifications(notifications.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
-    ));
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    setNotifications(
+      notifications.map((n) =>
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
-  const handleNotificationClick = (notification: Notification, e: React.MouseEvent) => {
+  const handleNotificationClick = (
+    notification: Notification,
+    e: React.MouseEvent
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setSelectedNotification(notification);
@@ -129,6 +144,27 @@ export function Header() {
     if (!notification.read) {
       markAsRead(notification.id);
     }
+  };
+
+  const markAllAsRead = async () => {
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+
+    if (unreadIds.length === 0) return;
+
+    const { error } = await supabase
+      .from("transactions")
+      .update({ read: true })
+      .in("id", unreadIds);
+
+    if (error) {
+      console.error("Error marking all as read:", error);
+      return;
+    }
+
+    // Update local state
+    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    setIsDropdownOpen(false); // Close dropdown after marking all as read
   };
 
   return (
@@ -157,8 +193,8 @@ export function Header() {
               </span>
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            sideOffset={12} 
+          <DropdownMenuContent
+            sideOffset={12}
             className="w-[350px] mr-4"
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
@@ -171,9 +207,11 @@ export function Header() {
                 </DropdownMenuItem>
               ) : (
                 notifications.map((notification) => (
-                  <DropdownMenuItem 
-                    key={notification.id} 
-                    className={`flex flex-col items-start ${!notification.read ? 'bg-gray-50' : ''}`}
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className={`flex flex-col items-start ${
+                      !notification.read ? "bg-gray-50" : ""
+                    }`}
                     onClick={(e) => handleNotificationClick(notification, e)}
                   >
                     <div className="flex w-full justify-between">
@@ -186,18 +224,39 @@ export function Header() {
                     </div>
                     <span className="text-xs text-muted-foreground">
                       Card: {notification.cards?.uid || "N/A"} •{" "}
-                      {format(new Date(notification.created_at), "MMM d, h:mm a")}
+                      {format(
+                        new Date(notification.created_at),
+                        "MMM d, h:mm a"
+                      )}
                     </span>
                   </DropdownMenuItem>
                 ))
               )}
             </ScrollArea>
+
+            {/* Custom footer section */}
+            <div className="border-t p-1 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  markAllAsRead();
+                }}
+                disabled={unreadCount === 0}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Mark all as read
+              </Button>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Notification Detail Dialog */}
-        <Dialog 
-          open={!!selectedNotification} 
+        <Dialog
+          open={!!selectedNotification}
           onOpenChange={(open) => {
             if (!open) setSelectedNotification(null);
           }}
@@ -217,7 +276,9 @@ export function Header() {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <span className="text-sm font-medium">Type:</span>
-                    <span className="col-span-3">{selectedNotification.type}</span>
+                    <span className="col-span-3">
+                      {selectedNotification.type}
+                    </span>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <span className="text-sm font-medium">Card:</span>
@@ -228,7 +289,10 @@ export function Header() {
                   <div className="grid grid-cols-4 items-center gap-4">
                     <span className="text-sm font-medium">Date:</span>
                     <span className="col-span-3">
-                      {format(new Date(selectedNotification.created_at), "MMM d, yyyy h:mm a")}
+                      {format(
+                        new Date(selectedNotification.created_at),
+                        "MMM d, yyyy h:mm a"
+                      )}
                     </span>
                   </div>
                 </div>
