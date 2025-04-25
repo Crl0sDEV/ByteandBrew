@@ -29,6 +29,7 @@ export interface Profile {
     user?: Profile | null;
     temperature: string;
     points: number;
+    read: boolean;
   }
   
   export interface Member {
