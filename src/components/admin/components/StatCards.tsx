@@ -38,10 +38,10 @@ interface StatCardsProps {
 interface TransactionData {
   date: string;
   payment: number;
-  reload: number;
+  points_addition: number;
   total: number;
   payment_amount: number;
-  reload_amount: number;
+  points_addition_amount: number;
   total_amount: number;
 }
 
@@ -220,39 +220,42 @@ export function StatCards({ stats }: StatCardsProps) {
       transactionsByDate[dateStr] = {
         date: dateStr,
         payment: 0,
-        reload: 0,
+        points_addition: 0,
         total: 0,
         payment_amount: 0,
-        reload_amount: 0,
+        points_addition_amount: 0,
         total_amount: 0,
       };
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    data.forEach((transaction) => {
-      if (!transaction.created_at) return;
+    // In the processTransactionData function, modify the points addition handling:
+data.forEach((transaction) => {
+  if (!transaction.created_at) return;
 
-      const transactionDate = new Date(transaction.created_at);
-      const date = formatDate(transactionDate);
+  const transactionDate = new Date(transaction.created_at);
+  const date = formatDate(transactionDate);
 
-      if (!transactionsByDate[date]) return;
+  if (!transactionsByDate[date]) return;
 
-      const isPayment = transaction.type === "payment";
-      const isReload = transaction.type === "reload";
+  const isPayment = transaction.type === "payment";
+  const isPointsAddition = transaction.type === "points_addition";
 
-      const amount = Number(transaction.amount) || 0;
+  // Use amount for payments, points for points additions
+  const value = isPayment ? Number(transaction.amount) || 0 : 
+              isPointsAddition ? Number(transaction.points) || 0 : 0;
 
-      if (isPayment) {
-        transactionsByDate[date].payment += 1;
-        transactionsByDate[date].payment_amount += amount;
-      } else if (isReload) {
-        transactionsByDate[date].reload += 1;
-        transactionsByDate[date].reload_amount += amount;
-      }
+  if (isPayment) {
+    transactionsByDate[date].payment += 1;
+    transactionsByDate[date].payment_amount += value;
+  } else if (isPointsAddition) {
+    transactionsByDate[date].points_addition += 1;
+    transactionsByDate[date].points_addition_amount += value;
+  }
 
-      transactionsByDate[date].total += 1;
-      transactionsByDate[date].total_amount += amount;
-    });
+  transactionsByDate[date].total += 1;
+  transactionsByDate[date].total_amount += value;
+});
 
     return Object.values(transactionsByDate).sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -265,42 +268,43 @@ export function StatCards({ stats }: StatCardsProps) {
   ): TransactionData[] => {
     const data: TransactionData[] = [];
     const currentDate = new Date(startDate);
-
+  
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split("T")[0];
       const paymentCount = Math.floor(Math.random() * 10) + 1;
-      const reloadCount = Math.floor(Math.random() * 8) + 1;
-
+      const pointsAdditionCount = Math.floor(Math.random() * 8) + 1;
+  
       data.push({
         date: dateStr,
         payment: paymentCount,
-        reload: reloadCount,
-        total: paymentCount + reloadCount,
+        points_addition: pointsAdditionCount,
+        total: paymentCount + pointsAdditionCount,
         payment_amount: paymentCount * 100 + Math.floor(Math.random() * 500),
-        reload_amount: reloadCount * 200 + Math.floor(Math.random() * 300),
+        // Using higher values for points to make them visible in the chart
+        points_addition_amount: pointsAdditionCount * 1000 + Math.floor(Math.random() * 3000),
         total_amount: 0,
       });
-
+  
       data[data.length - 1].total_amount =
         data[data.length - 1].payment_amount +
-        data[data.length - 1].reload_amount;
-
+        data[data.length - 1].points_addition_amount;
+  
       currentDate.setDate(currentDate.getDate() + 1);
     }
-
+  
     return data;
   };
 
   const getDataKeys = () => {
     if (chartView === "count") {
-      return ["payment", "reload"];
+      return ["payment", "points_addition"];
     } else {
-      return ["payment_amount", "reload_amount"];
+      return ["payment_amount", "points_addition_amount"];
     }
   };
 
   const formatTooltipValue = (value: any, name: any) => {
-    if (name === "Payment Amount" || name === "Reload Amount") {
+    if (name === "Payment Amount" || name === "Points Addition Amount") {
       return `₱${Number(value).toLocaleString()}`;
     }
     return value;
@@ -319,9 +323,9 @@ export function StatCards({ stats }: StatCardsProps) {
     const headers = [
       "Date",
       "Payments",
-      "Reloads",
+      "Points Additions",
       "Payment Amount",
-      "Reload Amount",
+      "Points Addition Amount",
       "Total Amount",
     ];
     const csvRows = [
@@ -331,9 +335,9 @@ export function StatCards({ stats }: StatCardsProps) {
         return [
           date,
           row.payment,
-          row.reload,
+          row.points_addition,
           row.payment_amount,
-          row.reload_amount,
+          row.points_addition_amount,
           row.total_amount,
         ].join(",");
       }),
@@ -523,18 +527,16 @@ export function StatCards({ stats }: StatCardsProps) {
                         key.includes("amount")
                           ? key.includes("payment")
                             ? "Payment Amount"
-                            : "Reload Amount"
+                            : "Points Addition Amount"
                           : key.includes("payment")
                           ? "Payments"
-                          : "Reloads"
+                          : "Points Additions"
                       }
                       stackId={chartView === "count" ? "stack" : undefined}
                     />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
-
-              {/* Fallback message if chart doesn't render */}
               {transactionData.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80">
                   <p>No transaction data available for the selected period</p>
