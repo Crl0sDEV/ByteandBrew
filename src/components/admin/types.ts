@@ -29,13 +29,16 @@ export interface Profile {
     cards: Card;
     user?: Profile | null;
     base_price: number;
-  has_sizes: boolean;
-  selected_size: string | null;
-  category: string;
-  is_add_on: boolean;
-  price: number;
-  reference_number: string;
+    has_sizes: boolean;
+    selected_size: string | null;
+    category: string;
+    is_add_on: boolean;
+    price: number;
+    reference_number: string;
+    final_price?: number;          // ✅ add this
+    temperature?: string | null;   // ✅ optional for manual entries
   }
+  
   
   export interface Member {
     id: string;
@@ -83,11 +86,13 @@ export interface Profile {
     created_at: string;
     base_price: number;
     has_sizes: boolean;
-    sizes: string[];
+    sizes: {
+      [key: string]: number; // e.g., small: 40, medium: 50
+    };
     category: string;
-    is_add_on: boolean; 
+    is_add_on: boolean;
     temperature?: string;
-  }
+  }  
 
 export interface EnhancedTransaction extends Transaction {
     card: Card;
