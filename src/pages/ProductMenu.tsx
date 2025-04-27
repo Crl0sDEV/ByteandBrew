@@ -4,15 +4,29 @@ import { supabase } from "@/lib/supabaseClient";
 import { Product } from "@/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import ProductCard from "../components/menu/ProductCard";
-import { getUniqueCategories } from "../components/menu/productHelpers";
 import Layout from "@/components/Layout/Layout";
+
+const getUniqueCategories = (products: Product[]): string[] => {
+  const categories = new Set<string>();
+  products.forEach(product => {
+    if (product.category) {
+      categories.add(product.category);
+    }
+  });
+  return ['all', ...Array.from(categories).sort()];
+};
 
 export default function ProductMenu() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sortOption, setSortOption] = useState<string>("default");
+  const [priceFilter, setPriceFilter] = useState<string>("all");
+  const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
+  const [sizeFilter, setSizeFilter] = useState<string>("all");
 
   const categories = useMemo(() => getUniqueCategories(products), [products]);
 
@@ -59,16 +73,67 @@ export default function ProductMenu() {
   }, []);
 
   useEffect(() => {
-    if (selectedCategory === "all") {
-      setFilteredProducts(products);
-    } else {
-      setFilteredProducts(products.filter((p) => p.category === selectedCategory));
+    let result = [...products];
+
+    // Apply category filter
+    if (selectedCategory !== "all") {
+      result = result.filter(p => p.category === selectedCategory);
     }
-  }, [selectedCategory, products]);
+
+    // Apply temperature filter
+    if (temperatureFilter !== "all") {
+      result = result.filter(p => p.temperature === temperatureFilter);
+    }
+
+    // Apply size filter
+    if (sizeFilter !== "all") {
+      result = result.filter(p => 
+        p.has_sizes && p.sizes && p.sizes.includes(sizeFilter)
+      );
+    }
+
+    // Apply price filter
+    if (priceFilter !== "all") {
+      const [min, max] = priceFilter.split("-").map(Number);
+      result = result.filter(p => {
+        const price = p.base_price || p.price;
+        return price >= min && (isNaN(max) ? true : price <= max);
+      });
+    }
+
+    // Apply sorting
+    switch (sortOption) {
+      case "price-asc":
+        result.sort((a, b) => (a.base_price || a.price) - (b.base_price || b.price));
+        break;
+      case "price-desc":
+        result.sort((a, b) => (b.base_price || b.price) - (a.base_price || a.price));
+        break;
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      default:
+        // Default sorting (keep original order)
+        break;
+    }
+
+    setFilteredProducts(result);
+  }, [products, selectedCategory, sortOption, priceFilter, temperatureFilter, sizeFilter]);
+
+  const resetFilters = () => {
+    setSelectedCategory("all");
+    setSortOption("default");
+    setPriceFilter("all");
+    setTemperatureFilter("all");
+    setSizeFilter("all");
+  };
 
   if (loading) {
     return (
-      <Layout>
+      <Layout showCartButton={false}>
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4"
           initial="hidden"
@@ -90,50 +155,141 @@ export default function ProductMenu() {
   }
 
   return (
-    <Layout>
+    <Layout showCartButton={false}>
       <motion.div 
         initial="hidden"
         animate="visible"
         variants={fadeIn}
-        className="container mx-auto p-4"
+        className="container mx-auto px-4 py-6"
       >
-        <motion.div 
-          className="mb-6 flex items-center gap-4"
-          variants={item}
-        >
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[200px] bg-background">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category === "all" ? "All Categories" : category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </motion.div>
+        {/* Filters Section */}
+        <div className="mb-8 space-y-4">
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+            <h2 className="text-lg font-semibold mb-4">Filters</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Category Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category === "all" ? "All Categories" : category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        >
-          <AnimatePresence>
-            {filteredProducts.map((product) => (
-              <motion.div
-                key={product.id}
-                variants={item}
-                layout
-                transition={{ duration: 0.3 }}
+              {/* Price Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Price Range</label>
+                <Select value={priceFilter} onValueChange={setPriceFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select price range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Prices</SelectItem>
+                    <SelectItem value="0-100">Under ₱100</SelectItem>
+                    <SelectItem value="100-200">₱100 - ₱200</SelectItem>
+                    <SelectItem value="200-300">₱200 - ₱300</SelectItem>
+                    <SelectItem value="300-">Over ₱300</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Temperature Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Temperature</label>
+                <Select value={temperatureFilter} onValueChange={setTemperatureFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select temperature" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Temperatures</SelectItem>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Size Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Size</label>
+                <Select value={sizeFilter} onValueChange={setSizeFilter}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sizes</SelectItem>
+                    <SelectItem value="Small">Small</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Large">Large</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sort Option */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Sort By</label>
+                <Select value={sortOption} onValueChange={setSortOption}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    <SelectItem value="name-asc">Name: A-Z</SelectItem>
+                    <SelectItem value="name-desc">Name: Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Reset Button */}
+            <div className="mt-4 flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={resetFilters}
+                className="text-sm"
               >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
+                Reset All Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Grid */}
+        {filteredProducts.length === 0 ? (
+          <motion.div className="text-center py-12" variants={item}>
+            <p className="text-lg text-muted-foreground">No products found with current filters</p>
+          </motion.div>
+        ) : (
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+          >
+            <AnimatePresence>
+              {filteredProducts.map((product) => (
+                <motion.div
+                  key={product.id}
+                  variants={item}
+                  layout
+                  transition={{ duration: 0.3 }}
+                >
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </motion.div>
     </Layout>
   );

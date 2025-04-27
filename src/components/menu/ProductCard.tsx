@@ -4,60 +4,25 @@ import { Badge } from "@/components/ui/badge";
 import { Product } from "@/lib/types";
 import TemperatureBadge from "./TemperatureBadge";
 
-// Animation variants
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut"
-    }
-  },
-  hover: {
-    y: -5,
-    shadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-    transition: {
-      duration: 0.3,
-      ease: "easeOut"
-    }
-  }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  hover: { y: -5, transition: { duration: 0.3 } }
 };
 
 const imageVariants = {
   hidden: { opacity: 0, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.7,
-      ease: "easeOut"
-    }
-  }
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.7 } }
 };
 
 const textVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
-    }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut"
-    }
-  }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -67,33 +32,34 @@ export default function ProductCard({ product }: { product: Product }) {
       animate="visible"
       whileHover="hover"
       variants={cardVariants}
-      className="h-full"
+      className="h-full w-full"
     >
-      <Card className="h-full flex flex-col !p-0 overflow-hidden">
-        {/* Image with animation */}
+      <Card className="h-full w-full flex flex-col !p-0 overflow-hidden">
+        {/* Image container with fixed aspect ratio */}
         <motion.div 
-          className="relative aspect-square w-full"
+          className="relative w-full aspect-square bg-muted/50 overflow-hidden"
           variants={imageVariants}
         >
           {product.image_url ? (
             <motion.img
               src={product.image_url}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+              className="absolute inset-0 w-full h-full object-cover"
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.3 }}
             />
           ) : (
-            <div className="w-full h-full bg-muted/50 flex items-center justify-center rounded-t-lg">
+            <div className="w-full h-full flex items-center justify-center">
               <span className="text-muted-foreground">No image</span>
             </div>
           )}
         </motion.div>
 
-        <CardContent className="p-3 flex-1 flex flex-col">
-          {/* Name and Category row with staggered animation */}
+        {/* Content area with fixed structure */}
+        <CardContent className="p-4 flex-1 flex flex-col gap-2">
+          {/* Header row */}
           <motion.div 
-            className="flex justify-between items-start gap-2"
+            className="flex justify-between items-start"
             variants={textVariants}
           >
             <motion.h3 
@@ -102,45 +68,45 @@ export default function ProductCard({ product }: { product: Product }) {
             >
               {product.name}
             </motion.h3>
-            <motion.div variants={itemVariants}>
-              <Badge variant="secondary" className="shrink-0">
-                {product.category}
-              </Badge>
-            </motion.div>
+            <Badge variant="secondary" className="shrink-0">
+              {product.category}
+            </Badge>
           </motion.div>
 
-          {/* Temperature badge with animation */}
+          {/* Temperature badge (always takes space) */}
           <motion.div 
-            className="min-h-[1.5rem] mt-1"
+            className="h-6"
             variants={itemVariants}
           >
             {product.temperature && product.temperature !== "none" ? (
               <TemperatureBadge temperature={product.temperature} />
-            ) : (
-              <div className="h-[1.5rem]"></div>
-            )}
+            ) : <div className="h-full" />}
           </motion.div>
 
-          {/* Description with animation */}
+          {/* Description with fixed height */}
           <motion.p 
-            className="text-muted-foreground text-sm line-clamp-2 mt-2 h-[2.5rem]"
+            className="text-muted-foreground text-sm line-clamp-2 h-[3.5rem]"
             variants={itemVariants}
           >
             {product.description}
           </motion.p>
 
-          {/* Price section with animation */}
-          <motion.div 
-            className="mt-auto pt-4"
-            variants={itemVariants}
-          >
-            <p className="font-bold text-lg">₱{product.base_price.toFixed(2)}</p>
-            {product.has_sizes && (
-              <p className="text-xs text-muted-foreground mt-1">
-                *Available in multiple sizes
-              </p>
-            )}
-          </motion.div>
+          {/* Price section with consistent bottom spacing */}
+          <div className="mt-auto pt-2">
+            <motion.div variants={itemVariants}>
+              <p className="font-bold text-lg">₱{product.base_price.toFixed(2)}</p>
+            </motion.div>
+            <motion.div 
+              className="h-5"
+              variants={itemVariants}
+            >
+              {product.has_sizes ? (
+                <p className="text-xs text-muted-foreground">
+                  *Available in multiple sizes
+                </p>
+              ) : <div className="h-full" />}
+            </motion.div>
+          </div>
         </CardContent>
       </Card>
     </motion.div>

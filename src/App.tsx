@@ -1,11 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
 import { supabase } from "@/lib/supabaseClient";
-
 import AuthPage from "@/pages/AuthPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import CustomerDashboard from "@/pages/CustomerDashboard";
-import PublicPage from "@/pages/ProductMenu"; // Import the new component
+import PublicPage from "@/pages/ProductMenu";
 import HomePage from "@/pages/HomePage";
 import ContactPage from "@/pages/ContactPage"
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -20,10 +19,10 @@ function App() {
         <Toaster richColors position="top-center" />
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<HomePage />} /> {/* Main storefront */}
-          <Route path="/menu" element={<PublicPage />} /> {/* Alternative path */}
-          <Route path="/contact" element={<ContactPage />} /> {/* Alternative path */}
-          <Route path="/auth" element={<AuthPage />} /> {/* Moved auth to /auth */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/menu" element={<PublicPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/auth" element={<AuthPage />} />
 
           {/* Protected routes */}
           <Route 

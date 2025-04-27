@@ -37,7 +37,6 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Use realtime-enabled hooks
   const { stats, loading: statsLoading } = useAdminStats(user);
   const { transactions, loading: transactionsLoading } = useTransactions(
     user,
