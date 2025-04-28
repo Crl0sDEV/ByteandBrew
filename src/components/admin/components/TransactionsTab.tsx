@@ -87,8 +87,8 @@ export function TransactionsTab({
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Points History</CardTitle>
-              <CardDescription>All customer points transactions</CardDescription>
+              <CardTitle>Purchase History</CardTitle>
+              <CardDescription>All customer points and purchase transactions</CardDescription>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">

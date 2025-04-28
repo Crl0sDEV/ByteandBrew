@@ -248,24 +248,24 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
         <div>
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-6 justify-center">
             <img src="/logo.png" alt="Byte & Brew Logo" className="w-8 h-8 rounded-full object-contain" />
             <span className="text-xl font-bold">BYTE & BREW</span>
           </div>
           <nav className="flex flex-col gap-2">
             {menuItems.map((item) => (
               <button
-                key={item.value}
-                onClick={() => handleTabChange(item.value)}
-                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors w-full text-left ${
-                  activeTab === item.value
-                    ? "bg-primary text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </button>
+              key={item.value}
+              onClick={() => handleTabChange(item.value)}
+              className={`flex items-center gap-3 px-4 py-2 transition-colors w-full text-left ${
+                activeTab === item.value
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
+            </button>
             ))}
           </nav>
         </div>
