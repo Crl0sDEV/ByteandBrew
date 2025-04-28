@@ -1,5 +1,6 @@
 import Layout from "@/components/Layout/Layout";
 import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -45,37 +46,42 @@ const fadeInVariants = {
 };
 
 export default function Home() {
+
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextButtonRef.current?.click(); 
+    }, 3000);
+
+    return () => clearInterval(interval); 
+  }, []);
+
   const featuredProducts = [
     {
-      name: "Byte Blend",
-      description: "Rich espresso with chocolate notes",
+      name: "Berry Bliss",
+      description: "Iced Tea",
       price: "₱150",
       image: "/byte-blend.jpg"
     },
     {
-      name: "Code Caramel",
+      name: "Double Mocha",
       description: "Caramel macchiato with extra kick",
       price: "₱180",
       image: "/code-caramel.jpg"
     },
     {
-      name: "Debug Decaf",
+      name: "Presca Matcha",
       description: "Smooth decaf for late nights",
       price: "₱160",
       image: "/debug-decaf.jpg"
     },
     {
-      name: "Java Jolt",
+      name: "Iced Spanish",
       description: "Extra strong black coffee",
       price: "₱170",
       image: "/java-jolt.jpg"
     },
-    {
-      name: "Python Punch",
-      description: "Fruity iced tea with citrus",
-      price: "₱165",
-      image: "/python-punch.jpg"
-    }
   ];
 
   return (
@@ -153,7 +159,7 @@ export default function Home() {
               className="text-3xl font-bold text-center mb-12 text-gray-900"
               variants={itemVariants}
             >
-              Our Signature Brews
+              Best Sellers
             </motion.h2>
             
             <motion.div variants={fadeInVariants}>
@@ -187,7 +193,7 @@ export default function Home() {
                   ))}
                 </CarouselContent>
                 <CarouselPrevious className="hidden md:flex" />
-                <CarouselNext className="hidden md:flex" />
+                <CarouselNext ref={nextButtonRef} className="hidden md:flex" />
               </Carousel>
             </motion.div>
           </div>
