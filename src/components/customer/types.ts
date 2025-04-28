@@ -24,4 +24,5 @@ export interface CustomerData {
     name: string;
     description: string;
     points: number;
+    quantity: number;
   }

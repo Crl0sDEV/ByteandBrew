@@ -89,6 +89,7 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
                 <TableHead>Image</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Points Required</TableHead>
+                <TableHead>Quantity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -113,6 +114,7 @@ export function RewardsTab({ rewards, loading, onCreate, onUpdate, onDelete }: R
                       </TableCell>
                     <TableCell>{reward.description}</TableCell>
                     <TableCell>{reward.points_required}</TableCell>
+                    <TableCell>{reward.quantity}</TableCell>
                     <TableCell>
                       <Badge variant={reward.is_active ? 'default' : 'outline'}>
                         {reward.is_active ? 'Active' : 'Inactive'}

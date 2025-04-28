@@ -61,6 +61,7 @@ export interface Profile {
     is_active: boolean;
     image_url: string | null;
   created_at: string;
+  quantity?: number;
   }
   
   export interface AdminStats {

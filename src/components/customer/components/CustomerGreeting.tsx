@@ -8,10 +8,12 @@ interface CustomerGreetingProps {
 export function CustomerGreeting({ name, hasCard }: CustomerGreetingProps) {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Welcome, {name}!</h1>
-      <p className="text-muted-foreground">
-        {hasCard ? "Your loyalty card details and activity" : "Get started with your loyalty card"}
-      </p>
+      <div className="inline-flex flex-col bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg">
+        <h1 className="text-2xl font-bold">Welcome, {name}!</h1>
+        <p className="text-muted-foreground text-custom">
+          {hasCard ? "Your loyalty card details and activity" : "Get started with your loyalty card"}
+        </p>
+      </div>
       
       {!hasCard && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">

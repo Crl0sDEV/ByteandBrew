@@ -28,6 +28,7 @@ export function RewardsSection({ rewards, points }: RewardsSectionProps) {
                 <div className="text-sm text-muted-foreground">
                   {reward.description}
                 </div>
+                <div className="font-medium">{reward.quantity}</div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="flex items-center gap-1">

@@ -7,6 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import ProductCard from "../components/menu/ProductCard";
 import Layout from "@/components/Layout/Layout";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const getUniqueCategories = (products: Product[]): string[] => {
   const categories = new Set<string>();
@@ -20,6 +27,7 @@ const getUniqueCategories = (products: Product[]): string[] => {
 
 export default function ProductMenu() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -162,29 +170,44 @@ export default function ProductMenu() {
         variants={fadeIn}
         className="container mx-auto px-4 py-6"
       >
-        {/* Filters Section */}
-        <div className="mb-8 space-y-4">
-          <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
-            <h2 className="text-lg font-semibold mb-4">Filters</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {/* Category Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category === "all" ? "All Categories" : category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
+        {/* Category Tabs Section with Filter Button */}
+        <div className="mb-6 bg-white rounded-lg shadow border border-gray-200 p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Menu</h2>
+            <Button 
+              variant="outline"
+              onClick={() => setShowFilterDialog(true)}
+              className="text-sm"
+            >
+              Filters
+            </Button>
+          </div>
+          <Tabs 
+            value={selectedCategory} 
+            onValueChange={setSelectedCategory}
+            className="w-full"
+          >
+            <TabsList className="flex w-full overflow-x-auto pb-2 gap-2">
+              {categories.map((category) => (
+                <TabsTrigger 
+                  key={category} 
+                  value={category}
+                  className="px-4 py-2 text-sm font-medium whitespace-nowrap capitalize"
+                >
+                  {category === "all" ? "All Categories" : category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+  
+        {/* Filter Dialog */}
+        <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Filters</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
               {/* Price Filter */}
               <div>
                 <label className="block text-sm font-medium mb-1">Price Range</label>
@@ -201,7 +224,7 @@ export default function ProductMenu() {
                   </SelectContent>
                 </Select>
               </div>
-
+  
               {/* Temperature Filter */}
               <div>
                 <label className="block text-sm font-medium mb-1">Temperature</label>
@@ -216,7 +239,7 @@ export default function ProductMenu() {
                   </SelectContent>
                 </Select>
               </div>
-
+  
               {/* Size Filter */}
               <div>
                 <label className="block text-sm font-medium mb-1">Size</label>
@@ -232,7 +255,7 @@ export default function ProductMenu() {
                   </SelectContent>
                 </Select>
               </div>
-
+  
               {/* Sort Option */}
               <div>
                 <label className="block text-sm font-medium mb-1">Sort By</label>
@@ -249,21 +272,27 @@ export default function ProductMenu() {
                   </SelectContent>
                 </Select>
               </div>
+  
+              {/* Reset Button */}
+              <div className="mt-4 flex justify-between">
+                <Button 
+                  variant="outline" 
+                  onClick={resetFilters}
+                  className="text-sm"
+                >
+                  Reset All Filters
+                </Button>
+                <Button 
+                  onClick={() => setShowFilterDialog(false)}
+                  className="text-sm"
+                >
+                  Apply Filters
+                </Button>
+              </div>
             </div>
-
-            {/* Reset Button */}
-            <div className="mt-4 flex justify-end">
-              <Button 
-                variant="outline" 
-                onClick={resetFilters}
-                className="text-sm"
-              >
-                Reset All Filters
-              </Button>
-            </div>
-          </div>
-        </div>
-
+          </DialogContent>
+        </Dialog>
+  
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
           <motion.div className="text-center py-12" variants={item}>
