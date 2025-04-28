@@ -7,26 +7,25 @@ import { TransactionsSection } from "../components/customer/components/Transacti
 import { RewardsSection } from "../components/customer/components/RewardsSection";
 import { GetStartedSection } from "../components/customer/components/GetStartedSection";
 import { QuickActions } from "../components/customer/components/QuickActions";
+import { RedemptionHistorySection } from "../components/customer/components/RedemptionHistory";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CustomerDashboard() {
   const user = useUser();
-  const { 
-    customerData, 
-    loading, 
-    refetch: refetchCustomerData 
-  } = useCustomerData(user);
+  const { customerData, loading, refetch } = useCustomerData(user);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Track initial load separately to prevent flash of loading state
+  
   useEffect(() => {
     if (!loading && isInitialLoad) {
+      console.log("Redemption History Data:", customerData?.redemptionHistory); // 👈 add this
       setIsInitialLoad(false);
     }
-  }, [loading, isInitialLoad]);
+  }, [loading, isInitialLoad, customerData]);
+  
 
-  // Show skeleton loader only on initial load
+  
   if (isInitialLoad) {
     return (
       <div className="p-4 md:p-8">
@@ -47,7 +46,7 @@ export default function CustomerDashboard() {
     );
   }
 
-  // Show empty state if no data (shouldn't happen with realtime updates)
+  
   if (!customerData) {
     return (
       <div className="p-4 md:p-8">
@@ -76,8 +75,8 @@ export default function CustomerDashboard() {
           balance={customerData.balance}
           points={customerData.points}
           pointsToNextReward={customerData.pointsToNextReward}
-          cardId={customerData.cardId || ''} // Assuming cardId is in customerData
-          onReloadSuccess={() => refetchCustomerData()} // Use the refetch from useCustomerData
+          cardId={customerData.cardId || ''} 
+          onReloadSuccess={() => refetch()} 
         />
 
         {customerData.hasCard ? (
@@ -87,16 +86,22 @@ export default function CustomerDashboard() {
               key={`transactions-${customerData.recentTransactions.length}`}
             />
             <RewardsSection 
-              rewards={customerData.availableRewards} 
-              points={customerData.points}
-              key={`rewards-${customerData.availableRewards.length}`}
-            />
+        rewards={customerData.availableRewards}
+        points={customerData.points}
+        cardId={customerData.cardId}
+        onRedeemSuccess={refetch}
+      />
           </div>
         ) : (
           <GetStartedSection hasCard={customerData.hasCard} />
         )}
 
         <QuickActions hasCard={customerData.hasCard} />
+        {customerData.hasCard && (
+  <div className="mt-6">
+    <RedemptionHistorySection redemptions={customerData.redemptionHistory || []} />
+  </div>
+)}
       </div>
     </div>
     </>

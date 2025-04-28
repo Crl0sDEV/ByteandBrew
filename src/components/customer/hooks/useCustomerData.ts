@@ -4,7 +4,7 @@ import { CustomerData } from "../types";
 
 export function useCustomerData(user: any) {
   const [loading, setLoading] = useState(true);
-  const [customerData, setCustomerData] = useState<CustomerData & { cardId?: string }>({
+  const [customerData, setCustomerData] = useState<CustomerData & { cardId?: string, redemptionHistory?: any[] }>({
     name: "",
     hasCard: false,
     cardNumber: "",
@@ -13,7 +13,8 @@ export function useCustomerData(user: any) {
     points: 0,
     pointsToNextReward: 1500,
     recentTransactions: [],
-    availableRewards: []
+    availableRewards: [],
+    redemptionHistory: []  // <-- NEW
   });
 
   const fetchData = useCallback(async () => {
@@ -29,7 +30,7 @@ export function useCustomerData(user: any) {
         .single();
 
       // Initialize default data
-      const defaultData: CustomerData & { cardId?: string } = {
+      const defaultData: CustomerData & { cardId?: string, redemptionHistory?: any[] } = {
         name: profileData?.full_name || "anonymous",
         hasCard: false,
         cardNumber: "",
@@ -38,7 +39,8 @@ export function useCustomerData(user: any) {
         points: 0,
         pointsToNextReward: 1500,
         recentTransactions: [],
-        availableRewards: []
+        availableRewards: [],
+        redemptionHistory: []
       };
 
       // 2. Try to fetch card
@@ -65,15 +67,23 @@ export function useCustomerData(user: any) {
       // 4. Fetch rewards
       const { data: rewards } = await supabase
         .from("rewards")
-        .select("id, name, description, points_required")
+        .select("id, name, description, points_required, quantity")
         .lte("points_required", card.points)
         .eq("is_active", true);
+
+      // 5. Fetch redemptions (NEW)
+      const { data: redemptions } = await supabase
+        .from("redemptions")
+        .select("id, reward_id, redeemed_at, status, points_used")
+        .eq("card_id", card.id)
+        .order("redeemed_at", { ascending: false })
+        .limit(5); // or remove limit if you want all
 
       setCustomerData({
         ...defaultData,
         hasCard: true,
         cardNumber: card.uid,
-        cardId: card.id, // Add cardId here
+        cardId: card.id,
         balance: card.balance,
         points: card.points,
         pointsToNextReward: Math.max(0, 1500 - card.points),
@@ -90,8 +100,16 @@ export function useCustomerData(user: any) {
           id: r.id,
           name: r.name,
           description: r.description,
-          points: r.points_required
-        })) || []
+          points_required: r.points_required,
+          quantity: r.quantity
+        })) || [],
+        redemptionHistory: redemptions?.map(r => ({
+          id: r.id,
+          rewardId: r.reward_id,
+          redeemedAt: r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : null,
+          status: r.status,
+          pointsUsed: r.points_used
+        })) || []        
       });
 
     } catch (error) {
@@ -107,12 +125,9 @@ export function useCustomerData(user: any) {
   }, [fetchData]);
 
   useEffect(() => {
-    // Initial fetch
     fetchData();
 
-    // Set up all realtime subscriptions
     const subscriptions = [
-      // Card balance updates
       supabase.channel('card-balance-changes')
         .on(
           'postgres_changes',
@@ -132,7 +147,6 @@ export function useCustomerData(user: any) {
           }
         ).subscribe(),
 
-      // New transactions
       supabase.channel('new-transactions')
         .on(
           'postgres_changes',
@@ -143,7 +157,6 @@ export function useCustomerData(user: any) {
             filter: `card_id=eq.${customerData.cardId}`
           },
           async () => {
-            // Optimistically update by fetching just the new transactions
             if (customerData.cardId) {
               const { data } = await supabase
                 .from("transactions")
@@ -151,7 +164,7 @@ export function useCustomerData(user: any) {
                 .eq("card_id", customerData.cardId)
                 .order("created_at", { ascending: false })
                 .limit(3);
-                
+
               if (data) {
                 setCustomerData(prev => ({
                   ...prev,
@@ -170,7 +183,6 @@ export function useCustomerData(user: any) {
           }
         ).subscribe(),
 
-      // Reward updates
       supabase.channel('reward-updates')
         .on(
           'postgres_changes',
@@ -180,14 +192,13 @@ export function useCustomerData(user: any) {
             table: 'rewards'
           },
           async () => {
-            // Only refetch rewards if user has a card
             if (customerData.cardId) {
               const { data } = await supabase
                 .from("rewards")
-                .select("id, name, description, points_required")
+                .select("id, name, description, points_required, quantity")
                 .lte("points_required", customerData.points)
                 .eq("is_active", true);
-                
+
               if (data) {
                 setCustomerData(prev => ({
                   ...prev,
@@ -195,7 +206,8 @@ export function useCustomerData(user: any) {
                     id: r.id,
                     name: r.name,
                     description: r.description,
-                    points: r.points_required
+                    points_required: r.points_required,
+                    quantity: r.quantity
                   }))
                 }));
               }
@@ -207,11 +219,11 @@ export function useCustomerData(user: any) {
     return () => {
       subscriptions.forEach(sub => supabase.removeChannel(sub));
     };
-  }, [fetchData, user, customerData.cardId]); // Add customerData.cardId to dependencies
+  }, [fetchData, user, customerData.cardId]);
 
   return { 
     customerData, 
     loading, 
-    refetch // Add refetch to returned object
+    refetch 
   };
 }

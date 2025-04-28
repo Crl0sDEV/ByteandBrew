@@ -22,7 +22,11 @@ export interface CustomerData {
   export interface Reward {
     id: string;
     name: string;
-    description: string;
-    points: number;
+    description?: string;
+    points_required: number; // 👈 Add this
     quantity: number;
+    image_url?: string | null;
+    is_active?: boolean | null;
+    created_at?: string | null;
   }
+  
