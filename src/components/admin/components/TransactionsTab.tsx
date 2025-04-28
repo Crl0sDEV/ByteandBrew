@@ -108,8 +108,8 @@ export function TransactionsTab({
               <TableRow>
                 <TableHead>Card</TableHead>
                 <TableHead>Customer</TableHead>
+                <TableHead>Amount</TableHead>
                 <TableHead>Points</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Date</TableHead>
@@ -121,12 +121,8 @@ export function TransactionsTab({
                   <TableRow key={t.id}>
                     <TableCell>{t.cards?.uid || "N/A"}</TableCell>
                     <TableCell>{t.user?.full_name || "Anonymous"}</TableCell>
+                    <TableCell>{t.amount || "No Amount"}</TableCell>
                     <TableCell>{t.points || 0} pts</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {t.category || "N/A"}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={

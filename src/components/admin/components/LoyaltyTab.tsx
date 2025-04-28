@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Card, Product, Profile, } from "../types";
+import { Card, Product, Profile } from "../types";
 import {
   Card as UICard,
   CardHeader,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, XCircle, User, Check, X, Scan, Gift } from "lucide-react";
+import { PlusCircle, XCircle, User, Check, X, Scan } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +42,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualTransactionDialog } from "./ManualTransactionDialog";
 
-// Updated to only handle points
 const onCardRegister = async (uid: string, userId: string) => {
   const { data, error } = await supabase.from("cards").insert([
     {
@@ -57,10 +56,8 @@ const onCardRegister = async (uid: string, userId: string) => {
   return data;
 };
 
-// Updated to handle points instead of balance
 const onAddPoints = async (cardId: string, pointsToAdd: number) => {
   try {
-    // First get current points
     const { data: cardData, error: fetchError } = await supabase
       .from("cards")
       .select("points")
@@ -72,7 +69,6 @@ const onAddPoints = async (cardId: string, pointsToAdd: number) => {
 
     const newPoints = cardData.points + pointsToAdd;
 
-    // Update points
     const { data, error } = await supabase
       .from("cards")
       .update({ points: newPoints })
@@ -81,7 +77,6 @@ const onAddPoints = async (cardId: string, pointsToAdd: number) => {
 
     if (error) throw error;
 
-    // Create a points transaction record
     const { error: transactionError } = await supabase
       .from("transactions")
       .insert({
@@ -126,18 +121,16 @@ interface LoyaltyTabProps {
 }
 
 export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
-    const [action, setAction] = useState<
-    "issue" | "addPoints" | "deactivate" | "manualPurchase" | null
+  const [action, setAction] = useState<
+    "issue" | "deactivate" | "manualPurchase" | null
   >(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null);
   const [scannedUid, setScannedUid] = useState<string | null>(null);
-  const [pointsToAdd, setPointsToAdd] = useState<string>("100");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectionMethod, setSelectionMethod] = useState<"member" | "scan">(
     "member"
   );
-  const [showConfirmAddPoints, setShowConfirmAddPoints] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState("lost");
   const [products, setProducts] = useState<Product[]>([]);
@@ -155,39 +148,66 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
     fetchProducts();
   }, []);
 
-  const handleManualTransaction = async (txData: any) => {
-    try {
-      const { error } = await supabase.from("transactions").insert({
-        card_id: txData.cardId,
-        amount: txData.amount,
-        item_count: txData.itemCount,
-        type: "payment",
-        status: "Completed",
-        confirmed: true,
-        base_price: txData.basePrice,
-        final_price: txData.finalPrice,
-        selected_size: txData.selectedSize,
-        product_size: txData.productSize,
-        has_sizes: txData.hasSizes,
-        category: txData.category,
-        temperature: txData.temperature,
-        is_add_on: txData.isAddOn,
-      });
-  
-      if (error) throw error;
-      toast.success("Transaction recorded!");
-      resetState();
-    } catch (err) {
-      toast.error("Error recording transaction");
-      console.error(err);
-    }
-  };
+  // Updated handleManualTransaction function
+const handleManualTransaction = async (txData: any) => {
+  try {
+    // Calculate total points from all products
+    const totalPoints = txData.items.reduce((sum, item) => {
+      const product = products.find(p => p.id === item.productId);
+      return sum + ((product?.points_value || 0) * item.quantity);
+    }, 0);
 
-  // Filter members without cards
+    // Create a single transaction record that includes both payment and points
+    const { error } = await supabase.from("transactions").insert({
+      card_id: txData.cardId,
+      amount: txData.totalAmount,
+      points: totalPoints, // Include points in the same transaction
+      item_count: txData.items.reduce((sum, item) => sum + item.quantity, 0),
+      type: "payment", // Single type that handles both payment and points
+      status: "Completed",
+      confirmed: true,
+      // Include any other necessary fields
+    });
+
+    if (error) throw error;
+
+    // Update card points if there are points to add
+    if (totalPoints > 0) {
+      const { data: cardData, error: fetchError } = await supabase
+        .from("cards")
+        .select("points")
+        .eq("id", txData.cardId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!cardData) throw new Error("Card not found");
+
+      const newPoints = (cardData.points || 0) + totalPoints;
+
+      const { error: updateError } = await supabase
+        .from("cards")
+        .update({ points: newPoints })
+        .eq("id", txData.cardId);
+
+      if (updateError) throw updateError;
+    }
+
+    toast.success(
+      totalPoints > 0 
+        ? `Transaction recorded and ${totalPoints} points added!`
+        : "Transaction recorded!"
+    );
+    
+    resetState();
+  } catch (err) {
+    console.error("Transaction error:", err);
+    toast.error("Error recording transaction");
+  }
+};
+
   const membersWithoutCards = (members ?? []).filter(
     (member) => !(cards ?? []).some((card) => card.user_id === member.id)
   );
-  // Filter members with cards
   const membersWithCards = (members ?? []).filter((member) =>
     (cards ?? []).some((card) => card.user_id === member.id)
   );
@@ -232,40 +252,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
     }
   };
 
-  const handleAddPoints = async () => {
-    if (!selectedCard) return;
-
-    const points = parseInt(pointsToAdd);
-    if (isNaN(points) || points <= 0) {
-      toast.error("Please enter a valid positive number for points");
-      return;
-    }
-
-    // Show confirmation for large point additions
-    if (points > 500) {
-      setShowConfirmAddPoints(true);
-      return;
-    }
-
-    await performAddPoints(selectedCard.id, points);
-  };
-
-  const performAddPoints = async (cardId: string, points: number) => {
-    try {
-      await onAddPoints(cardId, points);
-      toast.success("Points Added", {
-        description: `${points} points added to card ${selectedCard?.uid}`,
-      });
-      resetState();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not add points"
-      );
-    } finally {
-      setShowConfirmAddPoints(false);
-    }
-  };
-
   const handleDeactivateCard = async () => {
     if (!selectedCard) return;
 
@@ -287,8 +273,13 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
     setSelectedCard(null);
     setSelectedMember(null);
     setScannedUid(null);
-    setPointsToAdd("100");
   };
+
+  const [manualTransactionState, setManualTransactionState] = useState({
+    selectedCardId: "",
+    selectedProducts: [] as SelectedProduct[],
+    currentProduct: null as Product | null,
+  });
 
   if (loading) {
     return <div className="flex justify-center p-8">Loading cards...</div>;
@@ -302,7 +293,7 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
           <CardTitle>Loyalty Card Operations</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
               variant="outline"
               className="flex items-center gap-2 h-24"
@@ -313,20 +304,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
                 <div className="font-medium">Issue New Card</div>
                 <div className="text-sm text-muted-foreground">
                   Register new loyalty card
-                </div>
-              </div>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 h-24"
-              onClick={() => setAction("addPoints")}
-              disabled={cards.length === 0}
-            >
-              <Gift className="w-6 h-6" />
-              <div className="text-left">
-                <div className="font-medium">Add Points</div>
-                <div className="text-sm text-muted-foreground">
-                  Reward customer with points
                 </div>
               </div>
             </Button>
@@ -449,143 +426,10 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
               cards={cards}
               products={products}
               onSubmit={handleManualTransaction}
-              onClose={resetState}
+              onClose={() => setAction(null)}
+              initialState={manualTransactionState}
+              onStateChange={setManualTransactionState}
             />
-          )}
-
-          {action === "addPoints" && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Add Loyalty Points</DialogTitle>
-                <DialogDescription>
-                  Reward customer with loyalty points
-                </DialogDescription>
-              </DialogHeader>
-
-              <Tabs
-                value={selectionMethod}
-                onValueChange={(value) =>
-                  setSelectionMethod(value as "member" | "scan")
-                }
-                className="mb-4"
-              >
-                <TabsList>
-                  <TabsTrigger value="member">
-                    <User className="h-4 w-4 mr-2" />
-                    Select Member
-                  </TabsTrigger>
-                  <TabsTrigger value="scan">
-                    <Scan className="h-4 w-4 mr-2" />
-                    Scan Card
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              {selectionMethod === "member" ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Select Member</Label>
-                    <Select
-                      value={selectedMember?.id || ""}
-                      onValueChange={handleMemberSelect}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a member">
-                          {selectedMember
-                            ? selectedMember.full_name
-                            : "Select member"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {membersWithCards.length > 0 ? (
-                          membersWithCards.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                {member.full_name}
-                              </div>
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="text-sm text-muted-foreground p-2">
-                            No members with cards available
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedCard && (
-                    <div className="p-4 border rounded-lg space-y-2 bg-muted/50">
-                      <p className="font-medium">Card Details</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Card ID
-                          </p>
-                          <p>{selectedCard.uid}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Current Points
-                          </p>
-                          <p>{selectedCard.points}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Status
-                          </p>
-                          <Badge
-                            variant={
-                              selectedCard.status === "active"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {selectedCard.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <RFIDScanner onScan={handleScan} />
-                  {scannedUid && !selectedCard && (
-                    <p className="text-red-500">
-                      Card not found. Please scan a registered card.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {selectedCard && (
-                <div className="space-y-2">
-                  <Label>Points to Add</Label>
-                  <Input
-                    type="number"
-                    value={pointsToAdd}
-                    onChange={(e) => setPointsToAdd(e.target.value)}
-                    placeholder="Enter points to add"
-                    min="1"
-                  />
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={resetState}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddPoints}
-                  disabled={!selectedCard || selectedCard.status !== "active"}
-                >
-                  <Check className="mr-2 h-4 w-4" />
-                  Add Points
-                </Button>
-              </DialogFooter>
-            </>
           )}
 
           {action === "deactivate" && (
@@ -730,36 +574,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
               </DialogFooter>
             </>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Dialogs */}
-      <Dialog
-        open={showConfirmAddPoints}
-        onOpenChange={setShowConfirmAddPoints}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Add Points</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to add {pointsToAdd} points to this card?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmAddPoints(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() =>
-                performAddPoints(selectedCard?.id || "", parseInt(pointsToAdd))
-              }
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

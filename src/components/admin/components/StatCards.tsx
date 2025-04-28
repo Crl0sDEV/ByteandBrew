@@ -1,5 +1,4 @@
 "use client";
-
 import {
   Card as UICard,
   CardHeader,
@@ -37,34 +36,19 @@ interface StatCardsProps {
 
 interface TransactionData {
   date: string;
-  payment: number;
-  points_addition: number;
-  total: number;
+  payments: number;
   payment_amount: number;
-  points_addition_amount: number;
-  total_amount: number;
+  points_earned: number;
+  total_transactions: number;
 }
 
 type TimeRange = "7days" | "30days" | "90days" | "year";
-type ChartView = "count" | "amount";
 
 export function StatCards({ stats }: StatCardsProps) {
   const [transactionData, setTransactionData] = useState<TransactionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("30days");
-  const [chartView, setChartView] = useState<ChartView>("count");
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (transactionData.length > 0) {
-      console.log(
-        "Transaction data loaded:",
-        transactionData.length,
-        "records"
-      );
-    }
-  }, [transactionData]);
 
   useEffect(() => {
     const fetchTransactionData = async () => {
@@ -74,7 +58,6 @@ export function StatCards({ stats }: StatCardsProps) {
 
         const today = new Date();
         today.setHours(23, 59, 59, 999);
-
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
 
@@ -100,53 +83,16 @@ export function StatCards({ stats }: StatCardsProps) {
           return `${year}-${month}-${day}`;
         };
 
-        const formatEndDate = (date: Date) => {
-          return date.toISOString();
-        };
-
-        console.log(
-          "Fetching transactions from",
-          formatDate(startDate),
-          "to",
-          formatDate(today),
-          "(including today)"
-        );
-
         const { data, error: supabaseError } = await supabase
           .from("transactions")
           .select("*")
           .gte("created_at", formatDate(startDate))
-          .lte("created_at", formatEndDate(today))
+          .lte("created_at", today.toISOString())
           .order("created_at", { ascending: true });
 
         if (supabaseError) throw supabaseError;
 
-        console.log("Raw transaction data:", data?.length || 0, "records");
-
-        if (data && data.length > 0) {
-          console.log("First transaction date:", data[0].created_at);
-          console.log(
-            "Last transaction date:",
-            data[data.length - 1].created_at
-          );
-
-          const todayStr = formatDate(today);
-          const todaysData = data.filter((t) => {
-            const transactionDate = new Date(t.created_at)
-              .toISOString()
-              .split("T")[0];
-            return transactionDate === todayStr;
-          });
-
-          console.log("Today's transactions:", todaysData.length, "records");
-          if (todaysData.length > 0) {
-            console.log("Sample today's transaction:", todaysData[0]);
-          }
-        }
-
         if (!data || data.length === 0) {
-          console.log("No data with filters, trying without date filters");
-
           const { data: allData, error: allDataError } = await supabase
             .from("transactions")
             .select("*")
@@ -155,25 +101,12 @@ export function StatCards({ stats }: StatCardsProps) {
 
           if (allDataError) throw allDataError;
 
-          console.log("All transactions (up to 100):", allData?.length || 0);
-
           if (allData && allData.length > 0) {
-            console.log("Most recent transaction:", allData[0]);
-            console.log(
-              "Oldest transaction in sample:",
-              allData[allData.length - 1]
-            );
-
-            const processedData = processTransactionData(
-              allData,
-              startDate,
-              today
-            );
+            const processedData = processTransactionData(allData, startDate, today);
             setTransactionData(processedData);
             setLoading(false);
             return;
           } else {
-            console.log("No data returned, creating sample data");
             const sampleData = generateSampleData(startDate, today);
             setTransactionData(sampleData);
             setLoading(false);
@@ -190,6 +123,7 @@ export function StatCards({ stats }: StatCardsProps) {
         const today = new Date();
         const startDate = new Date();
         startDate.setDate(today.getDate() - 30);
+
         const sampleData = generateSampleData(startDate, today);
         setTransactionData(sampleData);
       } finally {
@@ -219,43 +153,33 @@ export function StatCards({ stats }: StatCardsProps) {
       const dateStr = formatDate(currentDate);
       transactionsByDate[dateStr] = {
         date: dateStr,
-        payment: 0,
-        points_addition: 0,
-        total: 0,
+        payments: 0,
         payment_amount: 0,
-        points_addition_amount: 0,
-        total_amount: 0,
+        points_earned: 0,
+        total_transactions: 0,
       };
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // In the processTransactionData function, modify the points addition handling:
-data.forEach((transaction) => {
-  if (!transaction.created_at) return;
+    data.forEach((transaction) => {
+      if (!transaction.created_at) return;
 
-  const transactionDate = new Date(transaction.created_at);
-  const date = formatDate(transactionDate);
+      const transactionDate = new Date(transaction.created_at);
+      const date = formatDate(transactionDate);
 
-  if (!transactionsByDate[date]) return;
+      if (!transactionsByDate[date]) return;
 
-  const isPayment = transaction.type === "payment";
-  const isPointsAddition = transaction.type === "points_addition";
+      const amount = parseFloat(transaction.amount) || 0;
+      const points = parseFloat(transaction.points) || 0;
 
-  // Use amount for payments, points for points additions
-  const value = isPayment ? Number(transaction.amount) || 0 : 
-              isPointsAddition ? Number(transaction.points) || 0 : 0;
+      if (transaction.type === "payment") {
+        transactionsByDate[date].payments += 1;
+        transactionsByDate[date].payment_amount += amount;
+        transactionsByDate[date].points_earned += points;
+      }
 
-  if (isPayment) {
-    transactionsByDate[date].payment += 1;
-    transactionsByDate[date].payment_amount += value;
-  } else if (isPointsAddition) {
-    transactionsByDate[date].points_addition += 1;
-    transactionsByDate[date].points_addition_amount += value;
-  }
-
-  transactionsByDate[date].total += 1;
-  transactionsByDate[date].total_amount += value;
-});
+      transactionsByDate[date].total_transactions += 1;
+    });
 
     return Object.values(transactionsByDate).sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -268,53 +192,35 @@ data.forEach((transaction) => {
   ): TransactionData[] => {
     const data: TransactionData[] = [];
     const currentDate = new Date(startDate);
-  
+
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split("T")[0];
       const paymentCount = Math.floor(Math.random() * 10) + 1;
-      const pointsAdditionCount = Math.floor(Math.random() * 8) + 1;
-  
+      const paymentAmount = paymentCount * 100 + Math.floor(Math.random() * 500);
+      const pointsEarned = paymentCount * 10 + Math.floor(Math.random() * 50);
+
       data.push({
         date: dateStr,
-        payment: paymentCount,
-        points_addition: pointsAdditionCount,
-        total: paymentCount + pointsAdditionCount,
-        payment_amount: paymentCount * 100 + Math.floor(Math.random() * 500),
-        // Using higher values for points to make them visible in the chart
-        points_addition_amount: pointsAdditionCount * 1000 + Math.floor(Math.random() * 3000),
-        total_amount: 0,
+        payments: paymentCount,
+        payment_amount: paymentAmount,
+        points_earned: pointsEarned,
+        total_transactions: paymentCount,
       });
-  
-      data[data.length - 1].total_amount =
-        data[data.length - 1].payment_amount +
-        data[data.length - 1].points_addition_amount;
-  
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
-  
+
     return data;
   };
 
-  const getDataKeys = () => {
-    if (chartView === "count") {
-      return ["payment", "points_addition"];
-    } else {
-      return ["payment_amount", "points_addition_amount"];
-    }
-  };
-
   const formatTooltipValue = (value: any, name: any) => {
-    if (name === "Payment Amount" || name === "Points Addition Amount") {
+    if (name === "Payment Amount") {
       return `₱${Number(value).toLocaleString()}`;
     }
-    return value;
-  };
-
-  const formatYAxisTick = (value: any): string => {
-    if (chartView === "amount") {
-      return `₱${value}`;
+    if (name === "Points Earned") {
+      return `${Number(value).toLocaleString()} pts`;
     }
-    return String(value);
+    return value;
   };
 
   const exportCSV = () => {
@@ -323,22 +229,21 @@ data.forEach((transaction) => {
     const headers = [
       "Date",
       "Payments",
-      "Points Additions",
       "Payment Amount",
-      "Points Addition Amount",
-      "Total Amount",
+      "Points Earned",
+      "Total Transactions",
     ];
+
     const csvRows = [
       headers.join(","),
       ...transactionData.map((row) => {
         const date = new Date(row.date).toLocaleDateString();
         return [
           date,
-          row.payment,
-          row.points_addition,
+          row.payments,
           row.payment_amount,
-          row.points_addition_amount,
-          row.total_amount,
+          row.points_earned,
+          row.total_transactions,
         ].join(",");
       }),
     ];
@@ -347,7 +252,6 @@ data.forEach((transaction) => {
     const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
@@ -362,6 +266,7 @@ data.forEach((transaction) => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Existing cards */}
         <UICard>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
@@ -410,142 +315,203 @@ data.forEach((transaction) => {
         </UICard>
       </div>
 
-      {/* Transaction Chart Card */}
-      <UICard>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <CardTitle>Transaction Overview</CardTitle>
-              <CardDescription>
-                {chartView === "count"
-                  ? "Number of transactions"
-                  : "Transaction amounts"}{" "}
-                by type
-              </CardDescription>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Select
-                value={timeRange}
-                onValueChange={(value) => setTimeRange(value as TimeRange)}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7days">Last 7 days</SelectItem>
-                  <SelectItem value="30days">Last 30 days</SelectItem>
-                  <SelectItem value="90days">Last 90 days</SelectItem>
-                  <SelectItem value="year">Last year</SelectItem>
-                </SelectContent>
-              </Select>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  {/* Payment Amount Chart */}
+  <UICard>
+    <CardHeader>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <CardTitle>Payment Amount Overview</CardTitle>
+          <CardDescription>Total payment amounts over time.</CardDescription>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Select
+            value={timeRange}
+            onValueChange={(value) => setTimeRange(value as TimeRange)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="90days">Last 90 days</SelectItem>
+              <SelectItem value="year">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportCSV}
+            disabled={!transactionData.length}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+      {loading ? (
+        <div className="h-[400px] flex items-center justify-center">
+          <p>Loading transaction data...</p>
+        </div>
+      ) : error && transactionData.length === 0 ? (
+        <div className="h-[400px] flex items-center justify-center text-red-500">
+          <p>{error}</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart
+            data={transactionData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={8}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `₱${value}`}
+              tickMargin={8}
+            />
+            <Tooltip
+              formatter={formatTooltipValue}
+              labelFormatter={(label) => {
+                const date = new Date(label);
+                return date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
+            />
+            <Legend verticalAlign="top" height={36} />
+            <Bar
+              dataKey="payment_amount"
+              fill="#4f46e5"
+              radius={[4, 4, 0, 0]}
+              name="Payment Amount"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </CardContent>
+  </UICard>
 
-              <Tabs
-                value={chartView}
-                onValueChange={(value) => setChartView(value as ChartView)}
-              >
-                <TabsList>
-                  <TabsTrigger value="count">Count</TabsTrigger>
-                  <TabsTrigger value="amount">Amount</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportCSV}
-                disabled={!transactionData.length}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Export
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="h-[400px] flex items-center justify-center">
-              <p>Loading transaction data...</p>
-            </div>
-          ) : error && transactionData.length === 0 ? (
-            <div className="h-[400px] flex items-center justify-center text-red-500">
-              <p>{error}</p>
-            </div>
-          ) : (
-            <div
-              ref={chartContainerRef}
-              className="h-[400px] w-full"
-              style={{ minHeight: "400px", position: "relative" }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={transactionData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(value) => {
-                      const date = new Date(value);
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      });
-                    }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickMargin={8}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={formatYAxisTick}
-                    tickMargin={8}
-                  />
-                  <Tooltip
-                    formatter={formatTooltipValue}
-                    labelFormatter={(label) => {
-                      const date = new Date(label);
-                      return date.toLocaleDateString("en-US", {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      });
-                    }}
-                  />
-                  <Legend verticalAlign="top" height={36} />
-                  {getDataKeys().map((key) => (
-                    <Bar
-                      key={key}
-                      dataKey={key}
-                      fill={key.includes("payment") ? "#4f46e5" : "#10b981"}
-                      radius={[4, 4, 0, 0]}
-                      name={
-                        key.includes("amount")
-                          ? key.includes("payment")
-                            ? "Payment Amount"
-                            : "Points Addition Amount"
-                          : key.includes("payment")
-                          ? "Payments"
-                          : "Points Additions"
-                      }
-                      stackId={chartView === "count" ? "stack" : undefined}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-              {transactionData.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                  <p>No transaction data available for the selected period</p>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </UICard>
+  {/* Points Earned Chart */}
+  <UICard>
+    <CardHeader>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <CardTitle>Points Earned Overview</CardTitle>
+          <CardDescription>Total points earned over time.</CardDescription>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Select
+            value={timeRange}
+            onValueChange={(value) => setTimeRange(value as TimeRange)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7days">Last 7 days</SelectItem>
+              <SelectItem value="30days">Last 30 days</SelectItem>
+              <SelectItem value="90days">Last 90 days</SelectItem>
+              <SelectItem value="year">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportCSV}
+            disabled={!transactionData.length}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+      {loading ? (
+        <div className="h-[400px] flex items-center justify-center">
+          <p>Loading transaction data...</p>
+        </div>
+      ) : error && transactionData.length === 0 ? (
+        <div className="h-[400px] flex items-center justify-center text-red-500">
+          <p>{error}</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart
+            data={transactionData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={8}
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(value) => `${value} pts`}
+              tickMargin={8}
+            />
+            <Tooltip
+              formatter={formatTooltipValue}
+              labelFormatter={(label) => {
+                const date = new Date(label);
+                return date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                });
+              }}
+            />
+            <Legend verticalAlign="top" height={36} />
+            <Bar
+              dataKey="points_earned"
+              fill="#10b981"
+              radius={[4, 4, 0, 0]}
+              name="Points Earned"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </CardContent>
+  </UICard>
+</div>
     </div>
   );
 }

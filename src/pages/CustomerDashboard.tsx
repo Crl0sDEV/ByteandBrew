@@ -60,10 +60,11 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <Header />
+    <>
+    <Header />
+    <div className="p-2 md:p-6 layout-background">
       
-      <div className="mt-6 space-y-6">
+      <div className="mt-2 space-y-6">
         <CustomerGreeting 
           name={customerData.name} 
           hasCard={customerData.hasCard} 
@@ -98,5 +99,6 @@ export default function CustomerDashboard() {
         <QuickActions hasCard={customerData.hasCard} />
       </div>
     </div>
+    </>
   );
 }

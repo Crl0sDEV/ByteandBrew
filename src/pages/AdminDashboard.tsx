@@ -1,12 +1,9 @@
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@supabase/auth-helpers-react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import AccountSettings from "./AccountSettings";
 import { useAdminStats } from "../components/admin/hooks/useAdminStats";
-import { useTransactions } from "../components/admin/hooks/useTransactions";
 import { useMembers } from "../components/admin/hooks/useMembers";
 import { useCards } from "../components/admin/hooks/useCards";
 import { useRewards } from "../components/admin/hooks/useRewards";
@@ -37,33 +34,82 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Fetch stats
   const { stats, loading: statsLoading } = useAdminStats(user);
-  const { transactions, loading: transactionsLoading } = useTransactions(
-    user,
-    activeTab === "transactions"
-  );
-  const { members, loading: membersLoading } = useMembers(
-    user,
-    activeTab === "members"
-  );
-  const { cards, loading: cardsLoading } = useCards(
-    user,
-    activeTab === "loyalty"
-  );
-  const {
-    products,
-    loading: productsLoading,
-    createProduct,
-    updateProduct,
-    deleteProduct,
-  } = useProducts(user, activeTab === "products");
+
+  // Fetch members
+  const { members, loading: membersLoading } = useMembers(user, true);
+
+  // Fetch cards
+  const { cards, loading: cardsLoading } = useCards(user, true);
+
+  // Fetch rewards
   const {
     rewards,
     loading: rewardsLoading,
     createReward,
     updateReward,
     deleteReward,
-  } = useRewards(user, activeTab === "rewards");
+  } = useRewards(user, true);
+
+  // Fetch products
+  const {
+    products,
+    loading: productsLoading,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  } = useProducts(user, true);
+
+  // Transactions state and Supabase Realtime setup
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch initial transactions
+    const fetchTransactions = async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching transactions:", error.message);
+      } else {
+        setTransactions(data);
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+
+    // Set up Supabase Realtime subscription
+    const channel = supabase
+      .channel("transactions")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setTransactions((prev) => [...prev, payload.new]);
+          } else if (payload.eventType === "UPDATE") {
+            setTransactions((prev) =>
+              prev.map((t) => (t.id === payload.new.id ? payload.new : t))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setTransactions((prev) =>
+              prev.filter((t) => t.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!statsLoading && isInitialLoad) {
@@ -89,7 +135,7 @@ export default function AdminDashboard() {
           return (
             <TransactionsTab
               transactions={transactions}
-              loading={transactionsLoading}
+              loading={loading}
             />
           );
         case "members":
@@ -134,7 +180,7 @@ export default function AdminDashboard() {
     [
       stats,
       transactions,
-      transactionsLoading,
+      loading,
       members,
       membersLoading,
       cards,
@@ -242,7 +288,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-container">
+      <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-background">
         <Header />
         <main className="p-4 md:p-8 flex-1 w-full overflow-x-hidden">
           {renderTabContent(activeTab)}

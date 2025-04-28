@@ -14,7 +14,7 @@ export default function Layout({
   onCartClick?: () => void
 }) {
   return (
-    <div className="min-h-screen layout-container">
+    <div className="min-h-screen layout-background">
       <Header />
       
       <main className="container mx-auto p-4">

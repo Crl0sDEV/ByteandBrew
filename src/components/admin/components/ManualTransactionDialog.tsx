@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, Product } from "../types";
 import { toast } from "sonner";
+import { X, Plus } from "lucide-react";
 
 interface SelectedProduct {
   product: Product;
@@ -31,6 +32,16 @@ interface ManualTransactionDialogProps {
   products: Product[];
   onSubmit: (data: any) => Promise<void>;
   onClose: () => void;
+  initialState?: {
+    selectedCardId: string;
+    selectedProducts: SelectedProduct[];
+    currentProduct: Product | null;
+  };
+  onStateChange?: (state: {
+    selectedCardId: string;
+    selectedProducts: SelectedProduct[];
+    currentProduct: Product | null;
+  }) => void;
 }
 
 export function ManualTransactionDialog({
@@ -58,6 +69,12 @@ export function ManualTransactionDialog({
     return selectedProducts.reduce((total, item) => {
       const price = getFinalPrice(item.product, item.size);
       return total + (price * item.quantity);
+    }, 0);
+  };
+
+  const calculateTotalPoints = () => {
+    return selectedProducts.reduce((total, item) => {
+      return total + ((item.product.points_value || 0) * item.quantity);
     }, 0);
   };
 
@@ -96,6 +113,11 @@ export function ManualTransactionDialog({
       return;
     }
 
+    const totalAmount = calculateTotal();
+    const totalPoints = selectedProducts.reduce((sum, item) => {
+      return sum + (item.product.points_value || 0) * item.quantity;
+    }, 0);
+
     try {
       await onSubmit({
         cardId: selectedCardId,
@@ -110,11 +132,13 @@ export function ManualTransactionDialog({
           temperature: item.temperature,
           isAddOn: item.isAddOn,
           quantity: item.quantity,
+          pointValue: item.product.points_value || 0,
         })),
-        totalAmount: calculateTotal(),
+        totalAmount,
+        totalPoints,
       });
 
-      toast.success("Transaction added!");
+      toast.success(`Transaction added! ${totalPoints > 0 ? `+${totalPoints} points earned` : ''}`);
       onClose();
     } catch (error: any) {
       toast.error("Failed to add transaction", {
@@ -132,159 +156,222 @@ export function ManualTransactionDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4 py-2">
-        <div>
-          <Label>Card</Label>
-          <Select onValueChange={setSelectedCardId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select card" />
-            </SelectTrigger>
-            <SelectContent>
-              {cards.map((card) => (
-                <SelectItem key={card.id} value={card.id}>
-                  {card.uid} - {card.profiles?.full_name || "No Name"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="border-t pt-4">
-          <h3 className="font-medium mb-2">Add Products</h3>
-          
-          <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-auto">
+        {/* Left Column - Card and Product Selection */}
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-lg mb-3">Card Selection</h3>
             <div>
-              <Label>Product</Label>
-              <Select
-                onValueChange={(value) =>
-                  setCurrentProduct(products.find((p) => p.id === value) || null)
-                }
-                value={currentProduct?.id || ""}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
+              <Label>Select Card</Label>
+              <Select onValueChange={setSelectedCardId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select card" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name} - ₱{product.base_price}
+                  {cards.map((card) => (
+                    <SelectItem key={card.id} value={card.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{card.uid}</span>
+                        <span className="truncate">{card.profiles?.full_name || "No Name"}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            {currentProduct?.has_sizes && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-lg mb-3">Add Products</h3>
+            <div className="space-y-4">
               <div>
-                <Label>Size</Label>
-                <Select 
-                  onValueChange={setCurrentSize}
-                  value={currentSize || ""}
+                <Label>Product</Label>
+                <Select
+                  onValueChange={(value) =>
+                    setCurrentProduct(products.find((p) => p.id === value) || null)
+                  }
+                  value={currentProduct?.id || ""}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select size" />
+                    <SelectValue placeholder="Select product" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(currentProduct.sizes || {}).map(
-                      ([size, price]) => (
-                        <SelectItem key={size} value={size}>
-                          {size} - ₱{price}
-                        </SelectItem>
-                      )
-                    )}
+                  <SelectContent className="max-h-60">
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        <div className="flex justify-between items-center">
+                          <span>{product.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">₱{product.base_price}</span>
+                            {product.points_value > 0 && (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                +{product.points_value} pts
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            <div>
-              <Label>Temperature (optional)</Label>
-              <Select 
-                onValueChange={setCurrentTemperature}
-                value={currentTemperature || ""}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select temperature" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hot">Hot</SelectItem>
-                  <SelectItem value="cold">Cold</SelectItem>
-                  <SelectItem value="iced">Iced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {currentProduct?.has_sizes && (
+                <div>
+                  <Label>Size</Label>
+                  <Select 
+                    onValueChange={setCurrentSize}
+                    value={currentSize || ""}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(currentProduct.sizes || {}).map(
+                        ([size, price]) => (
+                          <SelectItem key={size} value={size}>
+                            {size} - ₱{price}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div className="flex items-center gap-4">
               <div>
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={currentQuantity}
-                  onChange={(e) => setCurrentQuantity(Number(e.target.value))}
-                  className="w-20"
-                />
+                <Label>Temperature (optional)</Label>
+                <Select 
+                  onValueChange={setCurrentTemperature}
+                  value={currentTemperature || ""}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select temperature" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                    <SelectItem value="iced">Iced</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center mt-6">
-                <input
-                  type="checkbox"
-                  id="isAddOn"
-                  className="mr-2"
-                  checked={currentIsAddOn}
-                  onChange={(e) => setCurrentIsAddOn(e.target.checked)}
-                />
-                <Label htmlFor="isAddOn">Is Add-On?</Label>
-              </div>
-            </div>
 
-            <Button 
-              type="button" 
-              onClick={handleAddProduct}
-              className="w-full"
-            >
-              Add Product
-            </Button>
+              <div className="flex items-center gap-4">
+                <div className="w-24">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={currentQuantity}
+                    onChange={(e) => setCurrentQuantity(Number(e.target.value))}
+                  />
+                </div>
+                <div className="flex items-center space-x-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="isAddOn"
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={currentIsAddOn}
+                    onChange={(e) => setCurrentIsAddOn(e.target.checked)}
+                  />
+                  <Label htmlFor="isAddOn" className="text-sm font-medium">
+                    Is Add-On?
+                  </Label>
+                </div>
+              </div>
+
+              {currentProduct && (
+                <div className="text-sm text-gray-500">
+                  This will add: <span className="font-medium text-green-600">
+                    {(currentProduct.points_value || 0) * currentQuantity} points
+                  </span>
+                </div>
+              )}
+
+              <Button 
+                type="button" 
+                onClick={handleAddProduct}
+                className="w-full mt-2"
+                variant="secondary"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
+            </div>
           </div>
         </div>
 
-        {selectedProducts.length > 0 && (
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">Selected Products</h3>
-            <div className="space-y-2">
-              {selectedProducts.map((item, index) => (
-                <div key={index} className="flex justify-between items-center p-2 border rounded">
-                  <div>
-                    <p className="font-medium">{item.product.name} × {item.quantity}</p>
-                    {item.size && <p className="text-sm">Size: {item.size}</p>}
-                    {item.temperature && <p className="text-sm">Temp: {item.temperature}</p>}
-                    {item.isAddOn && <p className="text-sm">Add-On</p>}
-                    <p className="text-sm">
-                      ₱{(getFinalPrice(item.product, item.size) * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeProduct(index)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
+        {/* Right Column - Order Summary */}
+        <div className="bg-gray-50 p-4 rounded-lg h-full flex flex-col">
+          <h3 className="font-medium text-lg mb-3">Order Summary</h3>
+          
+          {selectedProducts.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-gray-400">
+              <p>No products added yet</p>
             </div>
-          </div>
-        )}
+          ) : (
+            <>
+              <div className="flex-1 overflow-auto space-y-3">
+                {selectedProducts.map((item, index) => (
+                  <div key={index} className="flex justify-between items-start p-3 border rounded-lg bg-white">
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <p className="font-medium">
+                          {item.product.name} × {item.quantity}
+                        </p>
+                        <p className="font-medium">
+                          ₱{(getFinalPrice(item.product, item.size) * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                        {item.size && <span>Size: {item.size}</span>}
+                        {item.temperature && <span>Temp: {item.temperature}</span>}
+                        {item.isAddOn && <span className="text-indigo-600">Add-On</span>}
+                      </div>
+                      {item.product.points_value > 0 && (
+                        <p className="text-xs text-green-600 mt-1">
+                          +{(item.product.points_value * item.quantity)} points
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeProduct(index)}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
 
-        <div className="font-semibold text-lg border-t pt-4">
-          Total Price: ₱{calculateTotal().toFixed(2)}
+              <div className="border-t mt-4 pt-4 space-y-2">
+                <div className="flex justify-between font-medium">
+                  <span>Subtotal:</span>
+                  <span>₱{calculateTotal().toFixed(2)}</span>
+                </div>
+                {calculateTotalPoints() > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Total Points:</span>
+                    <span>+{calculateTotalPoints()}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <DialogFooter>
+      <DialogFooter className="border-t pt-4">
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>Submit Transaction</Button>
+        <Button 
+          onClick={handleSubmit}
+          disabled={!selectedCardId || selectedProducts.length === 0}
+        >
+          Submit Transaction
+        </Button>
       </DialogFooter>
     </>
   );
