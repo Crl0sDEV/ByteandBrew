@@ -102,7 +102,11 @@ export function StatCards({ stats }: StatCardsProps) {
           if (allDataError) throw allDataError;
 
           if (allData && allData.length > 0) {
-            const processedData = processTransactionData(allData, startDate, today);
+            const processedData = processTransactionData(
+              allData,
+              startDate,
+              today
+            );
             setTransactionData(processedData);
             setLoading(false);
             return;
@@ -196,7 +200,8 @@ export function StatCards({ stats }: StatCardsProps) {
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split("T")[0];
       const paymentCount = Math.floor(Math.random() * 10) + 1;
-      const paymentAmount = paymentCount * 100 + Math.floor(Math.random() * 500);
+      const paymentAmount =
+        paymentCount * 100 + Math.floor(Math.random() * 500);
       const pointsEarned = paymentCount * 10 + Math.floor(Math.random() * 50);
 
       data.push({
@@ -276,7 +281,7 @@ export function StatCards({ stats }: StatCardsProps) {
             <div className="text-2xl font-bold">
               ₱{stats.todaySales.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">View details</p>
+            <p className="text-xs text-muted-foreground mt-1">Total today sales</p>
           </CardContent>
         </UICard>
         <UICard>
@@ -288,19 +293,21 @@ export function StatCards({ stats }: StatCardsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.activeMembers}</div>
-            <p className="text-xs text-muted-foreground mt-1">Manage members</p>
+            <p className="text-xs text-muted-foreground mt-1">Total members</p>
           </CardContent>
         </UICard>
         <UICard>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Points Redeemed
+              Reward Redemptions
             </CardTitle>
             <Gift className="w-4 h-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pointsRedeemed}</div>
-            <p className="text-xs text-muted-foreground mt-1">See rewards</p>
+            <div className="text-2xl font-bold">{stats.totalRedemptions}</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Total rewards redeemed
+            </div>
           </CardContent>
         </UICard>
         <UICard>
@@ -310,208 +317,212 @@ export function StatCards({ stats }: StatCardsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.cardsIssued}</div>
-            <p className="text-xs text-muted-foreground mt-1">View all cards</p>
+            <p className="text-xs text-muted-foreground mt-1">Total cards issued</p>
           </CardContent>
         </UICard>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-  {/* Payment Amount Chart */}
-  <UICard>
-    <CardHeader>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <CardTitle>Payment Amount Overview</CardTitle>
-          <CardDescription>Total payment amounts over time.</CardDescription>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Select
-            value={timeRange}
-            onValueChange={(value) => setTimeRange(value as TimeRange)}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Select range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="90days">Last 90 days</SelectItem>
-              <SelectItem value="year">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportCSV}
-            disabled={!transactionData.length}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent>
-      {loading ? (
-        <div className="h-[400px] flex items-center justify-center">
-          <p>Loading transaction data...</p>
-        </div>
-      ) : error && transactionData.length === 0 ? (
-        <div className="h-[400px] flex items-center justify-center text-red-500">
-          <p>{error}</p>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart
-            data={transactionData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-              axisLine={false}
-              tickLine={false}
-              tickMargin={8}
-              angle={-45}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(value) => `₱${value}`}
-              tickMargin={8}
-            />
-            <Tooltip
-              formatter={formatTooltipValue}
-              labelFormatter={(label) => {
-                const date = new Date(label);
-                return date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-            />
-            <Legend verticalAlign="top" height={36} />
-            <Bar
-              dataKey="payment_amount"
-              fill="#4f46e5"
-              radius={[4, 4, 0, 0]}
-              name="Payment Amount"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </CardContent>
-  </UICard>
+        {/* Payment Amount Chart */}
+        <UICard>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Payment Amount Overview</CardTitle>
+                <CardDescription>
+                  Total payment amounts over time.
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={timeRange}
+                  onValueChange={(value) => setTimeRange(value as TimeRange)}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Select range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7days">Last 7 days</SelectItem>
+                    <SelectItem value="30days">Last 30 days</SelectItem>
+                    <SelectItem value="90days">Last 90 days</SelectItem>
+                    <SelectItem value="year">Last year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCSV}
+                  disabled={!transactionData.length}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>Loading transaction data...</p>
+              </div>
+            ) : error && transactionData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center text-red-500">
+                <p>{error}</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={transactionData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickMargin={8}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `₱${value}`}
+                    tickMargin={8}
+                  />
+                  <Tooltip
+                    formatter={formatTooltipValue}
+                    labelFormatter={(label) => {
+                      const date = new Date(label);
+                      return date.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                  />
+                  <Legend verticalAlign="top" height={36} />
+                  <Bar
+                    dataKey="payment_amount"
+                    fill="#4f46e5"
+                    radius={[4, 4, 0, 0]}
+                    name="Payment Amount"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </UICard>
 
-  {/* Points Earned Chart */}
-  <UICard>
-    <CardHeader>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <CardTitle>Points Earned Overview</CardTitle>
-          <CardDescription>Total points earned over time.</CardDescription>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Select
-            value={timeRange}
-            onValueChange={(value) => setTimeRange(value as TimeRange)}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Select range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="90days">Last 90 days</SelectItem>
-              <SelectItem value="year">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportCSV}
-            disabled={!transactionData.length}
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-        </div>
+        {/* Points Earned Chart */}
+        <UICard>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Points Earned Overview</CardTitle>
+                <CardDescription>
+                  Total points earned over time.
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={timeRange}
+                  onValueChange={(value) => setTimeRange(value as TimeRange)}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Select range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7days">Last 7 days</SelectItem>
+                    <SelectItem value="30days">Last 30 days</SelectItem>
+                    <SelectItem value="90days">Last 90 days</SelectItem>
+                    <SelectItem value="year">Last year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCSV}
+                  disabled={!transactionData.length}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>Loading transaction data...</p>
+              </div>
+            ) : error && transactionData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center text-red-500">
+                <p>{error}</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={transactionData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickMargin={8}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) => `${value} pts`}
+                    tickMargin={8}
+                  />
+                  <Tooltip
+                    formatter={formatTooltipValue}
+                    labelFormatter={(label) => {
+                      const date = new Date(label);
+                      return date.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                  />
+                  <Legend verticalAlign="top" height={36} />
+                  <Bar
+                    dataKey="points_earned"
+                    fill="#10b981"
+                    radius={[4, 4, 0, 0]}
+                    name="Points Earned"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </UICard>
       </div>
-    </CardHeader>
-    <CardContent>
-      {loading ? (
-        <div className="h-[400px] flex items-center justify-center">
-          <p>Loading transaction data...</p>
-        </div>
-      ) : error && transactionData.length === 0 ? (
-        <div className="h-[400px] flex items-center justify-center text-red-500">
-          <p>{error}</p>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart
-            data={transactionData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-              axisLine={false}
-              tickLine={false}
-              tickMargin={8}
-              angle={-45}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(value) => `${value} pts`}
-              tickMargin={8}
-            />
-            <Tooltip
-              formatter={formatTooltipValue}
-              labelFormatter={(label) => {
-                const date = new Date(label);
-                return date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                });
-              }}
-            />
-            <Legend verticalAlign="top" height={36} />
-            <Bar
-              dataKey="points_earned"
-              fill="#10b981"
-              radius={[4, 4, 0, 0]}
-              name="Points Earned"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </CardContent>
-  </UICard>
-</div>
     </div>
   );
 }

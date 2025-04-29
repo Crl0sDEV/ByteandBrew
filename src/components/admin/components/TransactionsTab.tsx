@@ -88,7 +88,9 @@ export function TransactionsTab({
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Purchase History</CardTitle>
-              <CardDescription>All customer points and purchase transactions</CardDescription>
+              <CardDescription>
+                All customer points and purchase transactions
+              </CardDescription>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
@@ -109,7 +111,7 @@ export function TransactionsTab({
                 <TableHead>Card</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Points</TableHead>
+                <TableHead>Points Earned</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Date</TableHead>
@@ -126,9 +128,7 @@ export function TransactionsTab({
                     <TableCell>
                       <Badge
                         variant={
-                          t.status === "Completed"
-                            ? "default"
-                            : "destructive"
+                          t.status === "Completed" ? "default" : "destructive"
                         }
                       >
                         {t.status}

@@ -67,8 +67,8 @@ export interface Profile {
   export interface AdminStats {
     todaySales: number;
     activeMembers: number;
-    pointsRedeemed: number;
     cardsIssued: number;
+    totalRedemptions: number;
   }
 
   export interface DailySales {

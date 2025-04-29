@@ -8,6 +8,7 @@ import { useMembers } from "../components/admin/hooks/useMembers";
 import { useCards } from "../components/admin/hooks/useCards";
 import { useRewards } from "../components/admin/hooks/useRewards";
 import { useProducts } from "../components/admin/hooks/useProducts";
+import { useTransactions } from "../components/admin/hooks/useTransactions"; // Add this import
 import { StatCards } from "../components/admin/components/StatCards";
 import { TransactionsTab } from "../components/admin/components/TransactionsTab";
 import { MembersTab } from "../components/admin/components/MembersTab";
@@ -24,8 +25,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { CoffeeIcon } from "../components/admin/CoffeeIcon";
-import { supabase } from "@/lib/supabaseClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminDashboard() {
   const user = useUser();
@@ -61,55 +62,13 @@ export default function AdminDashboard() {
     deleteProduct,
   } = useProducts(user, true);
 
-  // Transactions state and Supabase Realtime setup
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Fetch initial transactions
-    const fetchTransactions = async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching transactions:", error.message);
-      } else {
-        setTransactions(data);
-        setLoading(false);
-      }
-    };
-
-    fetchTransactions();
-
-    // Set up Supabase Realtime subscription
-    const channel = supabase
-      .channel("transactions")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "transactions" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setTransactions((prev) => [...prev, payload.new]);
-          } else if (payload.eventType === "UPDATE") {
-            setTransactions((prev) =>
-              prev.map((t) => (t.id === payload.new.id ? payload.new : t))
-            );
-          } else if (payload.eventType === "DELETE") {
-            setTransactions((prev) =>
-              prev.filter((t) => t.id !== payload.old.id)
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    // Cleanup subscription on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Use the useTransactions hook instead of manual fetching
+  const { 
+    transactions, 
+    loading: transactionsLoading, 
+    error: transactionsError,
+    refreshTransactions 
+  } = useTransactions(user, true);
 
   useEffect(() => {
     if (!statsLoading && isInitialLoad) {
@@ -135,7 +94,7 @@ export default function AdminDashboard() {
           return (
             <TransactionsTab
               transactions={transactions}
-              loading={loading}
+              loading={transactionsLoading}
             />
           );
         case "members":
@@ -180,7 +139,7 @@ export default function AdminDashboard() {
     [
       stats,
       transactions,
-      loading,
+      transactionsLoading,
       members,
       membersLoading,
       cards,
@@ -255,17 +214,17 @@ export default function AdminDashboard() {
           <nav className="flex flex-col gap-2">
             {menuItems.map((item) => (
               <button
-              key={item.value}
-              onClick={() => handleTabChange(item.value)}
-              className={`flex items-center gap-3 px-4 py-2 transition-colors w-full text-left ${
-                activeTab === item.value
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
-            </button>
+                key={item.value}
+                onClick={() => handleTabChange(item.value)}
+                className={`flex items-center gap-3 px-4 py-2 transition-colors w-full text-left ${
+                  activeTab === item.value
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </button>
             ))}
           </nav>
         </div>
