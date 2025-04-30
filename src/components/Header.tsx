@@ -38,6 +38,30 @@ export function Header() {
     useState<Notification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+useEffect(() => {
+  if (!user?.id) return;
+
+  const profileChannel = supabase
+    .channel('realtime-profile')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${user.id}`
+      },
+      (payload) => {
+        setProfile(payload.new);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(profileChannel);
+  };
+}, [user?.id]);
 
   useEffect(() => {
     const fetchSession = async () => {

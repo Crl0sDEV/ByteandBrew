@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner"; // ✅ Add this
+import { Eye, EyeOff, Check, X } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AuthPage() {
   const [isRegister, setIsRegister] = useState(false);
@@ -15,8 +15,51 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
+  // Password validation states
+  const [passwordErrors, setPasswordErrors] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false,
+  });
+
+  const validatePassword = (pass: string) => {
+    setPasswordErrors({
+      length: pass.length >= 8,
+      uppercase: /[A-Z]/.test(pass),
+      lowercase: /[a-z]/.test(pass),
+      number: /[0-9]/.test(pass),
+      specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(pass),
+    });
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    if (isRegister) {
+      validatePassword(newPassword);
+    }
+  };
+
+  const isPasswordValid = () => {
+    return (
+      passwordErrors.length &&
+      passwordErrors.uppercase &&
+      passwordErrors.lowercase &&
+      passwordErrors.number &&
+      passwordErrors.specialChar
+    );
+  };
+
   const handleAuth = async () => {
     setError("");
+
+    if (isRegister && !isPasswordValid()) {
+      setError("Password does not meet requirements");
+      toast.error("Password does not meet requirements");
+      return;
+    }
 
     if (isRegister) {
       const { data, error } = await supabase.auth.signUp({
@@ -117,7 +160,7 @@ export default function AuthPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 className="pr-10"
               />
               <button
@@ -133,8 +176,60 @@ export default function AuthPage() {
               </button>
             </div>
 
+            {isRegister && (
+              <div className="space-y-2 text-sm">
+                <p className="font-medium">Password Requirements:</p>
+                <ul className="space-y-1">
+                  <li className="flex items-center">
+                    {passwordErrors.length ? (
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500 mr-2" />
+                    )}
+                    At least 8 characters
+                  </li>
+                  <li className="flex items-center">
+                    {passwordErrors.uppercase ? (
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500 mr-2" />
+                    )}
+                    At least one uppercase letter
+                  </li>
+                  <li className="flex items-center">
+                    {passwordErrors.lowercase ? (
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500 mr-2" />
+                    )}
+                    At least one lowercase letter
+                  </li>
+                  <li className="flex items-center">
+                    {passwordErrors.number ? (
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500 mr-2" />
+                    )}
+                    At least one number
+                  </li>
+                  <li className="flex items-center">
+                    {passwordErrors.specialChar ? (
+                      <Check className="w-4 h-4 text-green-500 mr-2" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500 mr-2" />
+                    )}
+                    At least one special character
+                  </li>
+                </ul>
+              </div>
+            )}
+
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button onClick={handleAuth} className="w-full">
+            <Button 
+              onClick={handleAuth} 
+              className="w-full"
+              disabled={isRegister && !isPasswordValid()}
+            >
               {isRegister ? "Register" : "Login"}
             </Button>
 
@@ -156,8 +251,17 @@ export default function AuthPage() {
             <p className="text-center text-sm">
               {isRegister ? "Already have an account?" : "No account yet?"}{" "}
               <span
-                onClick={() => setIsRegister(!isRegister)}
-                className="text-blue-500 cursor-pointer"
+                onClick={() => {
+                  setIsRegister(!isRegister);
+                  setPasswordErrors({
+                    length: false,
+                    uppercase: false,
+                    lowercase: false,
+                    number: false,
+                    specialChar: false,
+                  });
+                }}
+                className="text-blue-500 cursor-pointer hover:underline"
               >
                 {isRegister ? "Login" : "Register"}
               </span>
