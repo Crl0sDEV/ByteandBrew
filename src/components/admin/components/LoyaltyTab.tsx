@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Card, Product, Profile } from "../types";
+import { Card, Profile } from "../types";
 import {
   Card as UICard,
   CardHeader,
@@ -40,7 +40,6 @@ import { RFIDScanner } from "./RFIDScanner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ManualTransactionDialog } from "./ManualTransactionDialog";
 
 const onCardRegister = async (uid: string, userId: string) => {
   const { data, error } = await supabase.from("cards").insert([
@@ -121,9 +120,7 @@ interface LoyaltyTabProps {
 }
 
 export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
-  const [action, setAction] = useState<
-    "issue" | "deactivate" | "manualPurchase" | null
-  >(null);
+  const [action, setAction] = useState<"issue" | "deactivate" | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null);
   const [scannedUid, setScannedUid] = useState<string | null>(null);
@@ -133,77 +130,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
   );
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState("lost");
-  const [products, setProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const { data, error } = await supabase.from("products").select("*");
-      if (error) {
-        console.error("Error fetching products", error);
-      } else {
-        setProducts(data || []);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  // Updated handleManualTransaction function
-const handleManualTransaction = async (txData: any) => {
-  try {
-    // Calculate total points from all products
-    const totalPoints = txData.items.reduce((sum, item) => {
-      const product = products.find(p => p.id === item.productId);
-      return sum + ((product?.points_value || 0) * item.quantity);
-    }, 0);
-
-    // Create a single transaction record that includes both payment and points
-    const { error } = await supabase.from("transactions").insert({
-      card_id: txData.cardId,
-      amount: txData.totalAmount,
-      points: totalPoints, // Include points in the same transaction
-      item_count: txData.items.reduce((sum, item) => sum + item.quantity, 0),
-      type: "payment", // Single type that handles both payment and points
-      status: "Completed",
-      confirmed: true,
-      // Include any other necessary fields
-    });
-
-    if (error) throw error;
-
-    // Update card points if there are points to add
-    if (totalPoints > 0) {
-      const { data: cardData, error: fetchError } = await supabase
-        .from("cards")
-        .select("points")
-        .eq("id", txData.cardId)
-        .single();
-
-      if (fetchError) throw fetchError;
-      if (!cardData) throw new Error("Card not found");
-
-      const newPoints = (cardData.points || 0) + totalPoints;
-
-      const { error: updateError } = await supabase
-        .from("cards")
-        .update({ points: newPoints })
-        .eq("id", txData.cardId);
-
-      if (updateError) throw updateError;
-    }
-
-    toast.success(
-      totalPoints > 0 
-        ? `Transaction recorded and ${totalPoints} points added!`
-        : "Transaction recorded!"
-    );
-    
-    resetState();
-  } catch (err) {
-    console.error("Transaction error:", err);
-    toast.error("Error recording transaction");
-  }
-};
 
   const membersWithoutCards = (members ?? []).filter(
     (member) => !(cards ?? []).some((card) => card.user_id === member.id)
@@ -275,12 +201,6 @@ const handleManualTransaction = async (txData: any) => {
     setScannedUid(null);
   };
 
-  const [manualTransactionState, setManualTransactionState] = useState({
-    selectedCardId: "",
-    selectedProducts: [] as SelectedProduct[],
-    currentProduct: null as Product | null,
-  });
-
   if (loading) {
     return <div className="flex justify-center p-8">Loading cards...</div>;
   }
@@ -293,7 +213,7 @@ const handleManualTransaction = async (txData: any) => {
           <CardTitle>Loyalty Card Operations</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button
               variant="outline"
               className="flex items-center gap-2 h-24"
@@ -304,20 +224,6 @@ const handleManualTransaction = async (txData: any) => {
                 <div className="font-medium">Issue New Card</div>
                 <div className="text-sm text-muted-foreground">
                   Register new loyalty card
-                </div>
-              </div>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 h-24"
-              onClick={() => setAction("manualPurchase")}
-              disabled={cards.length === 0}
-            >
-              <Scan className="w-6 h-6" />
-              <div className="text-left">
-                <div className="font-medium">Manual Purchase</div>
-                <div className="text-sm text-muted-foreground">
-                  Record a product sale
                 </div>
               </div>
             </Button>
@@ -419,17 +325,6 @@ const handleManualTransaction = async (txData: any) => {
                 </Button>
               </DialogFooter>
             </>
-          )}
-
-          {action === "manualPurchase" && (
-            <ManualTransactionDialog
-              cards={cards}
-              products={products}
-              onSubmit={handleManualTransaction}
-              onClose={() => setAction(null)}
-              initialState={manualTransactionState}
-              onStateChange={setManualTransactionState}
-            />
           )}
 
           {action === "deactivate" && (

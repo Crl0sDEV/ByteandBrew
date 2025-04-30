@@ -95,6 +95,9 @@ export default function AdminDashboard() {
             <TransactionsTab
               transactions={transactions}
               loading={transactionsLoading}
+              cards={cards}
+            products={products}
+            onTransactionCreated={refreshTransactions}
             />
           );
         case "members":
@@ -154,6 +157,7 @@ export default function AdminDashboard() {
       createProduct,
       updateProduct,
       deleteProduct,
+      refreshTransactions,
     ]
   );
 

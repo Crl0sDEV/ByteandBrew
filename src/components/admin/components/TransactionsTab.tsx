@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Transaction } from "../types";
+import { Transaction, Card, Product } from "../types";
 import {
   Card as UICard,
   CardHeader,
@@ -31,15 +31,24 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { ManualTransactionCard } from "./ManualTransactionCard";
+import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 
 interface TransactionsTabProps {
   transactions: Transaction[];
   loading: boolean;
+  cards: Card[];
+  products: Product[];
+  onTransactionCreated: () => void;
 }
 
 export function TransactionsTab({
   transactions,
   loading,
+  cards,
+  products,
+  onTransactionCreated,
 }: TransactionsTabProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filteredTransactions, setFilteredTransactions] =
@@ -74,6 +83,85 @@ export function TransactionsTab({
     setCurrentPage(1); // Reset page on filter change
   }, [statusFilter]);
 
+  const handleSubmitTransaction = async (txData: any) => {
+    try {
+      // Calculate total points from all products
+      const totalPoints = txData.items.reduce((sum, item) => {
+        return sum + (item.pointValue * item.quantity);
+      }, 0);
+  
+      // Create the transaction record first
+      const { data: transactionData, error: txError } = await supabase
+        .from("transactions")
+        .insert({
+          card_id: txData.cardId,
+          amount: txData.totalAmount,
+          points: totalPoints,
+          item_count: txData.items.reduce((sum, item) => sum + item.quantity, 0),
+          type: "payment",
+          status: "Completed",
+          confirmed: true,
+        })
+        .select()
+        .single();
+  
+      if (txError) throw txError;
+      if (!transactionData) throw new Error("Transaction not created");
+  
+      // Create transaction items for each product
+      const { error: itemsError } = await supabase
+        .from("transaction_items")
+        .insert(
+          txData.items.map((item: any) => ({
+            transaction_id: transactionData.id,
+            product_id: item.productId,
+            product_name: item.productName, // Store product name
+            quantity: item.quantity,
+            price: item.finalPrice,
+            size: item.size,
+            temperature: item.temperature,
+            is_add_on: item.isAddOn,
+            points_earned: item.pointValue * item.quantity,
+          }))
+        );
+  
+      if (itemsError) throw itemsError;
+  
+      // Update card points if there are points to add
+      if (totalPoints > 0) {
+        const { data: cardData, error: fetchError } = await supabase
+          .from("cards")
+          .select("points")
+          .eq("id", txData.cardId)
+          .single();
+  
+        if (fetchError) throw fetchError;
+        if (!cardData) throw new Error("Card not found");
+  
+        const newPoints = (cardData.points || 0) + totalPoints;
+  
+        const { error: updateError } = await supabase
+          .from("cards")
+          .update({ points: newPoints })
+          .eq("id", txData.cardId);
+  
+        if (updateError) throw updateError;
+      }
+  
+      toast.success(
+        totalPoints > 0 
+          ? `Transaction recorded and ${totalPoints} points added!`
+          : "Transaction recorded!"
+      );
+      
+      // Refresh transactions
+      onTransactionCreated();
+    } catch (err) {
+      console.error("Transaction error:", err);
+      toast.error("Error recording transaction");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">Loading transactions...</div>
@@ -82,14 +170,21 @@ export function TransactionsTab({
 
   return (
     <div className="space-y-4">
-      {/* Points History Card */}
+      {/* Manual Transaction Card */}
+      <ManualTransactionCard 
+        cards={cards} 
+        products={products} 
+        onSubmit={handleSubmitTransaction} 
+      />
+
+      {/* Purchase History Card */}
       <UICard>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Purchase History</CardTitle>
               <CardDescription>
-                All customer points and purchase transactions
+                All customer points and amounts transactions
               </CardDescription>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>

@@ -19,6 +19,7 @@ import {
   Legend,
   Tooltip,
   ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -42,13 +43,21 @@ interface TransactionData {
   total_transactions: number;
 }
 
+interface ProductSalesData {
+  name: string;
+  value: number;
+}
+
+
 type TimeRange = "7days" | "30days" | "90days" | "year";
 
 export function StatCards({ stats }: StatCardsProps) {
   const [transactionData, setTransactionData] = useState<TransactionData[]>([]);
+  const [productSalesData, setProductSalesData] = useState<ProductSalesData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("30days");
+  const [productSalesTimeRange, setProductSalesTimeRange] = useState<TimeRange>("30days");
 
   useEffect(() => {
     const fetchTransactionData = async () => {
@@ -137,6 +146,79 @@ export function StatCards({ stats }: StatCardsProps) {
 
     fetchTransactionData();
   }, [timeRange]);
+
+  useEffect(() => {
+    const fetchProductSalesData = async () => {
+      try {
+        setLoading(true);
+        
+        // Calculate date range based on selection
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+  
+        switch (productSalesTimeRange) {
+          case "7days":
+            startDate.setDate(today.getDate() - 7);
+            break;
+          case "30days":
+            startDate.setDate(today.getDate() - 30);
+            break;
+          case "90days":
+            startDate.setDate(today.getDate() - 90);
+            break;
+          case "year":
+            startDate.setFullYear(today.getFullYear() - 1);
+            break;
+        }
+  
+        // Query with proper joins
+        const { data, error } = await supabase
+          .from("transaction_items")
+          .select(`
+            product_name, 
+            quantity, 
+            price,
+            transactions!inner(created_at)
+          `)
+          .gte("transactions.created_at", startDate.toISOString())
+          .lte("transactions.created_at", today.toISOString());
+  
+        if (error) throw error;
+  
+        if (data && data.length > 0) {
+          const productMap = new Map<string, number>();
+          
+          data.forEach(item => {
+            const total = (item.price || 0) * (item.quantity || 1);
+            if (productMap.has(item.product_name)) {
+              productMap.set(item.product_name, productMap.get(item.product_name)! + total);
+            } else {
+              productMap.set(item.product_name, total);
+            }
+          });
+  
+          const sortedProducts = Array.from(productMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+  
+          setProductSalesData(sortedProducts);
+        } else {
+          setProductSalesData([]);
+        }
+      } catch (err) {
+        console.error("Error fetching product sales data:", err);
+        setProductSalesData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchProductSalesData();
+  }, [productSalesTimeRange]); // Changed dependency
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
   const processTransactionData = (
     data: any[],
@@ -522,6 +604,100 @@ export function StatCards({ stats }: StatCardsProps) {
             )}
           </CardContent>
         </UICard>
+
+        <UICard>
+  <CardHeader>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <CardTitle>Product Sales Distribution</CardTitle>
+        <CardDescription>
+          Breakdown of sales by product
+        </CardDescription>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Select
+          value={productSalesTimeRange}
+          onValueChange={(value) => setProductSalesTimeRange(value as TimeRange)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Select range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7days">Last 7 days</SelectItem>
+            <SelectItem value="30days">Last 30 days</SelectItem>
+            <SelectItem value="90days">Last 90 days</SelectItem>
+            <SelectItem value="year">Last year</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (productSalesData.length === 0) return;
+            
+            const headers = ["Product", "Sales Amount"];
+            const csvRows = [
+              headers.join(","),
+              ...productSalesData.map(item => 
+                [item.name, `₱${item.value.toLocaleString()}`].join(",")
+              )
+            ];
+            
+            const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `product_sales_${productSalesTimeRange}_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+          }}
+          disabled={productSalesData.length === 0}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          Export
+        </Button>
+      </div>
+    </div>
+  </CardHeader>
+  <CardContent>
+    {loading ? (
+      <div className="h-[400px] flex items-center justify-center">
+        <p>Loading product sales data...</p>
+      </div>
+    ) : productSalesData.length === 0 ? (
+      <div className="h-[400px] flex items-center justify-center">
+        <p>No product sales data available</p>
+      </div>
+    ) : (
+      <ResponsiveContainer width="100%" height={400}>
+        <PieChart>
+          <Pie
+            data={productSalesData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={120}
+            fill="#8884d8"
+            dataKey="value"
+            nameKey="name"
+            label={({ name, percent }) => 
+              `${name}: ${(percent * 100).toFixed(0)}%`}
+          >
+            {productSalesData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={COLORS[index % COLORS.length]} 
+              />
+            ))}
+          </Pie>
+          <Tooltip 
+            formatter={(value: number) => [`₱${value.toLocaleString()}`, "Sales"]}
+          />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    )}
+  </CardContent>
+</UICard>
       </div>
     </div>
   );
