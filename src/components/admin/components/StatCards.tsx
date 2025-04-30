@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { ShoppingCart, Users, Gift, CreditCard, Download } from "lucide-react";
 import type { AdminStats } from "../types";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   BarChart,
@@ -21,7 +21,6 @@ import {
   ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -38,6 +37,7 @@ interface StatCardsProps {
 interface TransactionData {
   date: string;
   payments: number;
+  cups_sold: number;
   payment_amount: number;
   points_earned: number;
   total_transactions: number;
@@ -48,29 +48,47 @@ interface ProductSalesData {
   value: number;
 }
 
-
 type TimeRange = "7days" | "30days" | "90days" | "year";
 
 export function StatCards({ stats }: StatCardsProps) {
-  const [transactionData, setTransactionData] = useState<TransactionData[]>([]);
-  const [productSalesData, setProductSalesData] = useState<ProductSalesData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>("30days");
-  const [productSalesTimeRange, setProductSalesTimeRange] = useState<TimeRange>("30days");
+  // State for payment amount chart
+  const [paymentData, setPaymentData] = useState<TransactionData[]>([]);
+  const [paymentTimeRange, setPaymentTimeRange] = useState<TimeRange>("30days");
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  // State for points earned chart
+  const [pointsData, setPointsData] = useState<TransactionData[]>([]);
+  const [pointsTimeRange, setPointsTimeRange] = useState<TimeRange>("30days");
+  const [pointsLoading, setPointsLoading] = useState(true);
+  const [pointsError, setPointsError] = useState<string | null>(null);
+
+  // State for product sales chart
+  const [productSalesData, setProductSalesData] = useState<ProductSalesData[]>([]);
+  const [productSalesTimeRange, setProductSalesTimeRange] = useState<TimeRange>("30days");
+  const [productSalesLoading, setProductSalesLoading] = useState(true);
+
+  // State for cups sold chart
+  const [cupsData, setCupsData] = useState<TransactionData[]>([]);
+const [cupsTimeRange, setCupsTimeRange] = useState<TimeRange>("30days");
+const [cupsLoading, setCupsLoading] = useState(true);
+const [cupsError, setCupsError] = useState<string | null>(null);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+  // Fetch payment data
   useEffect(() => {
-    const fetchTransactionData = async () => {
+    const fetchPaymentData = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setPaymentLoading(true);
+        setPaymentError(null);
 
         const today = new Date();
         today.setHours(23, 59, 59, 999);
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
 
-        switch (timeRange) {
+        switch (paymentTimeRange) {
           case "7days":
             startDate.setDate(today.getDate() - 7);
             break;
@@ -92,72 +110,113 @@ export function StatCards({ stats }: StatCardsProps) {
           return `${year}-${month}-${day}`;
         };
 
-        const { data, error: supabaseError } = await supabase
+        const { data, error } = await supabase
           .from("transactions")
           .select("*")
           .gte("created_at", formatDate(startDate))
           .lte("created_at", today.toISOString())
           .order("created_at", { ascending: true });
 
-        if (supabaseError) throw supabaseError;
+        if (error) throw error;
 
         if (!data || data.length === 0) {
-          const { data: allData, error: allDataError } = await supabase
-            .from("transactions")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(100);
-
-          if (allDataError) throw allDataError;
-
-          if (allData && allData.length > 0) {
-            const processedData = processTransactionData(
-              allData,
-              startDate,
-              today
-            );
-            setTransactionData(processedData);
-            setLoading(false);
-            return;
-          } else {
-            const sampleData = generateSampleData(startDate, today);
-            setTransactionData(sampleData);
-            setLoading(false);
-            return;
-          }
+          const processedData = generateSampleData(startDate, today);
+          setPaymentData(processedData);
+        } else {
+          const processedData = processTransactionData(data, startDate, today);
+          setPaymentData(processedData);
         }
-
-        const processedData = processTransactionData(data, startDate, today);
-        setTransactionData(processedData);
       } catch (err) {
-        console.error("Error fetching transaction data:", err);
-        setError("Failed to load transaction data");
-
+        console.error("Error fetching payment data:", err);
+        setPaymentError("Failed to load payment data");
         const today = new Date();
         const startDate = new Date();
         startDate.setDate(today.getDate() - 30);
-
-        const sampleData = generateSampleData(startDate, today);
-        setTransactionData(sampleData);
+        setPaymentData(generateSampleData(startDate, today));
       } finally {
-        setLoading(false);
+        setPaymentLoading(false);
       }
     };
 
-    fetchTransactionData();
-  }, [timeRange]);
+    fetchPaymentData();
+  }, [paymentTimeRange]);
 
+  // Fetch points data
   useEffect(() => {
-    const fetchProductSalesData = async () => {
+    const fetchPointsData = async () => {
       try {
-        setLoading(true);
-        
-        // Calculate date range based on selection
+        setPointsLoading(true);
+        setPointsError(null);
+
         const today = new Date();
         today.setHours(23, 59, 59, 999);
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
-  
+
+        switch (pointsTimeRange) {
+          case "7days":
+            startDate.setDate(today.getDate() - 7);
+            break;
+          case "30days":
+            startDate.setDate(today.getDate() - 30);
+            break;
+          case "90days":
+            startDate.setDate(today.getDate() - 90);
+            break;
+          case "year":
+            startDate.setFullYear(today.getFullYear() - 1);
+            break;
+        }
+
+        const formatDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .gte("created_at", formatDate(startDate))
+          .lte("created_at", today.toISOString())
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          const processedData = generateSampleData(startDate, today);
+          setPointsData(processedData);
+        } else {
+          const processedData = processTransactionData(data, startDate, today);
+          setPointsData(processedData);
+        }
+      } catch (err) {
+        console.error("Error fetching points data:", err);
+        setPointsError("Failed to load points data");
+        const today = new Date();
+        const startDate = new Date();
+        startDate.setDate(today.getDate() - 30);
+        setPointsData(generateSampleData(startDate, today));
+      } finally {
+        setPointsLoading(false);
+      }
+    };
+
+    fetchPointsData();
+  }, [pointsTimeRange]);
+
+  // Fetch product sales data
+  useEffect(() => {
+    const fetchProductSalesData = async () => {
+      try {
+        setProductSalesLoading(true);
+        
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+
         switch (productSalesTimeRange) {
           case "7days":
             startDate.setDate(today.getDate() - 7);
@@ -172,8 +231,7 @@ export function StatCards({ stats }: StatCardsProps) {
             startDate.setFullYear(today.getFullYear() - 1);
             break;
         }
-  
-        // Query with proper joins
+
         const { data, error } = await supabase
           .from("transaction_items")
           .select(`
@@ -184,9 +242,9 @@ export function StatCards({ stats }: StatCardsProps) {
           `)
           .gte("transactions.created_at", startDate.toISOString())
           .lte("transactions.created_at", today.toISOString());
-  
+
         if (error) throw error;
-  
+
         if (data && data.length > 0) {
           const productMap = new Map<string, number>();
           
@@ -198,27 +256,152 @@ export function StatCards({ stats }: StatCardsProps) {
               productMap.set(item.product_name, total);
             }
           });
-  
+
           const sortedProducts = Array.from(productMap.entries())
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
-  
+
           setProductSalesData(sortedProducts);
         } else {
           setProductSalesData([]);
         }
       } catch (err) {
         console.error("Error fetching product sales data:", err);
-        setProductSalesData([]);
+        setProductSalesData([
+          { name: "Product A", value: 4000 },
+          { name: "Product B", value: 3000 },
+          { name: "Product C", value: 2000 },
+          { name: "Product D", value: 1000 },
+        ]);
       } finally {
-        setLoading(false);
+        setProductSalesLoading(false);
       }
     };
-  
-    fetchProductSalesData();
-  }, [productSalesTimeRange]); // Changed dependency
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+    fetchProductSalesData();
+  }, [productSalesTimeRange]);
+
+  // Fetch cups sold data
+useEffect(() => {
+  const fetchCupsData = async () => {
+    try {
+      setCupsLoading(true);
+      setCupsError(null);
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
+
+      switch (cupsTimeRange) {
+        case "7days":
+          startDate.setDate(today.getDate() - 7);
+          break;
+        case "30days":
+          startDate.setDate(today.getDate() - 30);
+          break;
+        case "90days":
+          startDate.setDate(today.getDate() - 90);
+          break;
+        case "year":
+          startDate.setFullYear(today.getFullYear() - 1);
+          break;
+      }
+
+      const { data, error } = await supabase
+        .from("transaction_items")
+        .select(`
+          quantity,
+          transactions!inner(created_at)
+        `)
+        .gte("transactions.created_at", startDate.toISOString())
+        .lte("transactions.created_at", today.toISOString());
+
+      if (error) throw error;
+
+      // Process the data to count cups per day
+      const processedData = processCupsData(data || [], startDate, today);
+      setCupsData(processedData);
+    } catch (err) {
+      console.error("Error fetching cups data:", err);
+      setCupsError("Failed to load cups data");
+      const today = new Date();
+      const startDate = new Date();
+      startDate.setDate(today.getDate() - 30);
+      setCupsData(generateSampleCupsData(startDate, today));
+    } finally {
+      setCupsLoading(false);
+    }
+  };
+
+  fetchCupsData();
+}, [cupsTimeRange]);
+
+const processCupsData = (data: any[], startDate: Date, endDate: Date) => {
+  const cupsByDate: Record<string, TransactionData> = {};
+
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Initialize all dates in range with 0 cups
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    const dateStr = formatDate(currentDate);
+    cupsByDate[dateStr] = {
+      date: dateStr,
+      cups_sold: 0,
+      payments: 0,
+      payment_amount: 0,
+      points_earned: 0,
+      total_transactions: 0,
+    };
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Count cups for each date
+  data.forEach((item) => {
+    if (!item.transactions?.created_at) return;
+
+    const transactionDate = new Date(item.transactions.created_at);
+    const date = formatDate(transactionDate);
+
+    if (!cupsByDate[date]) return;
+
+    const quantity = item.quantity || 1;
+    cupsByDate[date].cups_sold += quantity;
+  });
+
+  return Object.values(cupsByDate).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+};
+
+const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData[] => {
+  const data: TransactionData[] = [];
+  const currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split("T")[0];
+    const cupsSold = Math.floor(Math.random() * 20) + 5;
+
+    data.push({
+      date: dateStr,
+      cups_sold: cupsSold,
+      payments: 0,
+      payment_amount: 0,
+      points_earned: 0,
+      total_transactions: 0,
+    });
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return data;
+};
 
   const processTransactionData = (
     data: any[],
@@ -310,8 +493,8 @@ export function StatCards({ stats }: StatCardsProps) {
     return value;
   };
 
-  const exportCSV = () => {
-    if (!transactionData.length) return;
+  const exportPaymentCSV = () => {
+    if (!paymentData.length) return;
 
     const headers = [
       "Date",
@@ -323,7 +506,7 @@ export function StatCards({ stats }: StatCardsProps) {
 
     const csvRows = [
       headers.join(","),
-      ...transactionData.map((row) => {
+      ...paymentData.map((row) => {
         const date = new Date(row.date).toLocaleDateString();
         return [
           date,
@@ -342,7 +525,93 @@ export function StatCards({ stats }: StatCardsProps) {
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `transactions_${timeRange}_${new Date().toISOString().split("T")[0]}.csv`
+      `payment_data_${paymentTimeRange}_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPointsCSV = () => {
+    if (!pointsData.length) return;
+
+    const headers = [
+      "Date",
+      "Payments",
+      "Payment Amount",
+      "Points Earned",
+      "Total Transactions",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...pointsData.map((row) => {
+        const date = new Date(row.date).toLocaleDateString();
+        return [
+          date,
+          row.payments,
+          row.payment_amount,
+          row.points_earned,
+          row.total_transactions,
+        ].join(",");
+      }),
+    ];
+
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `points_data_${pointsTimeRange}_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportProductSalesCSV = () => {
+    if (!productSalesData.length) return;
+
+    const headers = ["Product", "Sales Amount"];
+    const csvRows = [
+      headers.join(","),
+      ...productSalesData.map(item => 
+        [item.name, `₱${item.value.toLocaleString()}`].join(",")
+      )
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `product_sales_${productSalesTimeRange}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const exportCupsCSV = () => {
+    if (!cupsData.length) return;
+  
+    const headers = ["Date", "Cups Sold"];
+    const csvRows = [
+      headers.join(","),
+      ...cupsData.map((row) => {
+        const date = new Date(row.date).toLocaleDateString();
+        return [date, row.cups_sold].join(",");
+      }),
+    ];
+  
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `cups_data_${cupsTimeRange}_${new Date().toISOString().split("T")[0]}.csv`
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -417,8 +686,8 @@ export function StatCards({ stats }: StatCardsProps) {
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
-                  value={timeRange}
-                  onValueChange={(value) => setTimeRange(value as TimeRange)}
+                  value={paymentTimeRange}
+                  onValueChange={(value) => setPaymentTimeRange(value as TimeRange)}
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Select range" />
@@ -433,8 +702,8 @@ export function StatCards({ stats }: StatCardsProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={exportCSV}
-                  disabled={!transactionData.length}
+                  onClick={exportPaymentCSV}
+                  disabled={!paymentData.length}
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Export
@@ -443,18 +712,18 @@ export function StatCards({ stats }: StatCardsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {paymentLoading ? (
               <div className="h-[400px] flex items-center justify-center">
-                <p>Loading transaction data...</p>
+                <p>Loading payment data...</p>
               </div>
-            ) : error && transactionData.length === 0 ? (
+            ) : paymentError && paymentData.length === 0 ? (
               <div className="h-[400px] flex items-center justify-center text-red-500">
-                <p>{error}</p>
+                <p>{paymentError}</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
-                  data={transactionData}
+                  data={paymentData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -517,8 +786,8 @@ export function StatCards({ stats }: StatCardsProps) {
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
-                  value={timeRange}
-                  onValueChange={(value) => setTimeRange(value as TimeRange)}
+                  value={pointsTimeRange}
+                  onValueChange={(value) => setPointsTimeRange(value as TimeRange)}
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Select range" />
@@ -533,8 +802,8 @@ export function StatCards({ stats }: StatCardsProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={exportCSV}
-                  disabled={!transactionData.length}
+                  onClick={exportPointsCSV}
+                  disabled={!pointsData.length}
                 >
                   <Download className="h-4 w-4 mr-1" />
                   Export
@@ -543,18 +812,18 @@ export function StatCards({ stats }: StatCardsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {pointsLoading ? (
               <div className="h-[400px] flex items-center justify-center">
-                <p>Loading transaction data...</p>
+                <p>Loading points data...</p>
               </div>
-            ) : error && transactionData.length === 0 ? (
+            ) : pointsError && pointsData.length === 0 ? (
               <div className="h-[400px] flex items-center justify-center text-red-500">
-                <p>{error}</p>
+                <p>{pointsError}</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
-                  data={transactionData}
+                  data={pointsData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -605,19 +874,98 @@ export function StatCards({ stats }: StatCardsProps) {
           </CardContent>
         </UICard>
 
+        {/* Product Sales Distribution */}
         <UICard>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Product Sales Distribution</CardTitle>
+                <CardDescription>
+                  Breakdown of sales by product
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={productSalesTimeRange}
+                  onValueChange={(value) => setProductSalesTimeRange(value as TimeRange)}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Select range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7days">Last 7 days</SelectItem>
+                    <SelectItem value="30days">Last 30 days</SelectItem>
+                    <SelectItem value="90days">Last 90 days</SelectItem>
+                    <SelectItem value="year">Last year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportProductSalesCSV}
+                  disabled={!productSalesData.length}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {productSalesLoading ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>Loading product sales data...</p>
+              </div>
+            ) : productSalesData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>No product sales data available</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={productSalesData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => 
+                      `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {productSalesData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={COLORS[index % COLORS.length]} 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [`₱${value.toLocaleString()}`, "Sales"]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </UICard>
+
+        {/* Cups Sold Chart */}
+<UICard>
   <CardHeader>
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <CardTitle>Product Sales Distribution</CardTitle>
+        <CardTitle>Cups Sold Overview</CardTitle>
         <CardDescription>
-          Breakdown of sales by product
+          Number of cups sold each day
         </CardDescription>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
         <Select
-          value={productSalesTimeRange}
-          onValueChange={(value) => setProductSalesTimeRange(value as TimeRange)}
+          value={cupsTimeRange}
+          onValueChange={(value) => setCupsTimeRange(value as TimeRange)}
         >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Select range" />
@@ -632,25 +980,8 @@ export function StatCards({ stats }: StatCardsProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => {
-            if (productSalesData.length === 0) return;
-            
-            const headers = ["Product", "Sales Amount"];
-            const csvRows = [
-              headers.join(","),
-              ...productSalesData.map(item => 
-                [item.name, `₱${item.value.toLocaleString()}`].join(",")
-              )
-            ];
-            
-            const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `product_sales_${productSalesTimeRange}_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
-          }}
-          disabled={productSalesData.length === 0}
+          onClick={exportCupsCSV}
+          disabled={!cupsData.length}
         >
           <Download className="h-4 w-4 mr-1" />
           Export
@@ -659,41 +990,62 @@ export function StatCards({ stats }: StatCardsProps) {
     </div>
   </CardHeader>
   <CardContent>
-    {loading ? (
+    {cupsLoading ? (
       <div className="h-[400px] flex items-center justify-center">
-        <p>Loading product sales data...</p>
+        <p>Loading cups data...</p>
       </div>
-    ) : productSalesData.length === 0 ? (
-      <div className="h-[400px] flex items-center justify-center">
-        <p>No product sales data available</p>
+    ) : cupsError && cupsData.length === 0 ? (
+      <div className="h-[400px] flex items-center justify-center text-red-500">
+        <p>{cupsError}</p>
       </div>
     ) : (
       <ResponsiveContainer width="100%" height={400}>
-        <PieChart>
-          <Pie
-            data={productSalesData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={120}
-            fill="#8884d8"
-            dataKey="value"
-            nameKey="name"
-            label={({ name, percent }) => 
-              `${name}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {productSalesData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={COLORS[index % COLORS.length]} 
-              />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value: number) => [`₱${value.toLocaleString()}`, "Sales"]}
+        <BarChart
+          data={cupsData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(value) => {
+              const date = new Date(value);
+              return date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              });
+            }}
+            axisLine={false}
+            tickLine={false}
+            tickMargin={8}
+            angle={-45}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tickMargin={8}
+          />
+          <Tooltip
+            formatter={(value) => [`${value} cups`, "Cups Sold"]}
+            labelFormatter={(label) => {
+              const date = new Date(label);
+              return date.toLocaleDateString("en-US", {
+                weekday: "short",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              });
+            }}
           />
           <Legend />
-        </PieChart>
+          <Bar
+            dataKey="cups_sold"
+            fill="#FF8042"
+            radius={[4, 4, 0, 0]}
+            name="Cups Sold"
+          />
+        </BarChart>
       </ResponsiveContainer>
     )}
   </CardContent>
