@@ -16,7 +16,7 @@ export interface CustomerData {
     items: number;
     type: string;
     status: string;
-    pointsEarned: number;
+    points: number;
   }
   
   export interface Reward {

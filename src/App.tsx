@@ -10,6 +10,7 @@ import ContactPage from "@/pages/ContactPage"
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import AccountSettings from "@/pages/AccountSettings";
+import AccountSettingsCustomer from "./pages/AccountSettingsCustomer";
 import { Toaster } from "sonner";
 
 function App() {
@@ -56,6 +57,14 @@ function App() {
                 <AccountSettings />
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/account-settings-customer" 
+            element={
+              <ProtectedRoute>
+                <AccountSettingsCustomer />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </BrowserRouter>

@@ -34,7 +34,7 @@ export function TransactionsSection({ transactions }: TransactionsSectionProps) 
                   <TableCell>₱{t.amount}</TableCell>
                   <TableCell>{t.items}</TableCell>
                   <TableCell>{t.type}</TableCell>
-                  <TableCell>+{t.pointsEarned}</TableCell>
+                  <TableCell>+{t.points}</TableCell>
                   <TableCell className="text-right">
                     <Badge variant="outline">{t.status}</Badge>
                   </TableCell>

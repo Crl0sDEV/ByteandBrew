@@ -59,7 +59,7 @@ export function useCustomerData(user: any) {
       // 3. Fetch transactions
       const { data: transactions } = await supabase
         .from("transactions")
-        .select("id, amount, item_count, status, type, created_at, points_earned")
+        .select("id, amount, item_count, status, type, created_at, points")
         .eq("card_id", card.id)
         .order("created_at", { ascending: false })
         .limit(3);
@@ -94,7 +94,7 @@ export function useCustomerData(user: any) {
           items: t.item_count || 0,
           type: t.type,
           status: t.status,
-          pointsEarned: t.points_earned
+          points: t.points,
         })) || [],
         availableRewards: rewards?.map(r => ({
           id: r.id,
@@ -160,7 +160,7 @@ export function useCustomerData(user: any) {
             if (customerData.cardId) {
               const { data } = await supabase
                 .from("transactions")
-                .select("id, amount, item_count, status, type, created_at, points_earned")
+                .select("id, amount, item_count, status, type, created_at, points")
                 .eq("card_id", customerData.cardId)
                 .order("created_at", { ascending: false })
                 .limit(3);
@@ -175,7 +175,7 @@ export function useCustomerData(user: any) {
                     items: t.item_count || 0,
                     type: t.type,
                     status: t.status,
-                    pointsEarned: t.points_earned
+                    points: t.points
                   }))
                 }));
               }
