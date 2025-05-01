@@ -36,7 +36,7 @@ export interface Profile {
     price: number;
     reference_number: string;
     final_price?: number;          // ✅ add this
-    temperature?: string | null;   // ✅ optional for manual entries
+    temperature?: string | null;
   }
   
   

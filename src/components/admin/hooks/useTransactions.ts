@@ -21,6 +21,7 @@ export function useTransactions(user: User | null, shouldFetch: boolean) {
           id,
           amount,
           points,
+          points_expires_at,
           item_count,
           type,
           status,

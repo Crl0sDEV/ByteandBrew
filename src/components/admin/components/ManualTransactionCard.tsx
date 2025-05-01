@@ -41,6 +41,7 @@ export function ManualTransactionCard({
   products,
   onSubmit,
 }: ManualTransactionCardProps) {
+  const POINTS_EXPIRATION_DAYS = 15;
   const [selectedCardId, setSelectedCardId] = useState("");
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(
     []
@@ -142,6 +143,11 @@ export function ManualTransactionCard({
   
     const totalAmount = calculateTotal();
     const totalPoints = calculateTotalPoints();
+    
+    // Calculate expiration date if points are being earned
+    const pointsExpiresAt = totalPoints > 0 
+      ? new Date(Date.now() + POINTS_EXPIRATION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+      : null;
   
     try {
       await onSubmit({
@@ -161,11 +167,14 @@ export function ManualTransactionCard({
         })),
         totalAmount,
         totalPoints,
+        pointsExpiresAt,
       });
   
       toast.success(
         `Transaction added! ${
-          totalPoints > 0 ? `+${totalPoints} points earned` : ""
+          totalPoints > 0 
+            ? `+${totalPoints} points earned${pointsExpiresAt ? ` (expires in ${POINTS_EXPIRATION_DAYS} days)` : ''}` 
+            : ""
         }`
       );
       setSelectedCardId("");

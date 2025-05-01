@@ -90,6 +90,11 @@ export function TransactionsTab({
         return sum + (item.pointValue * item.quantity);
       }, 0);
   
+      // Calculate expiration date (15 days from now) if points are being earned
+      const pointsExpiresAt = totalPoints > 0 
+        ? new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+  
       // Create the transaction record first
       const { data: transactionData, error: txError } = await supabase
         .from("transactions")
@@ -97,6 +102,7 @@ export function TransactionsTab({
           card_id: txData.cardId,
           amount: txData.totalAmount,
           points: totalPoints,
+          points_expires_at: pointsExpiresAt, // Add expiration date
           item_count: txData.items.reduce((sum, item) => sum + item.quantity, 0),
           type: "payment",
           status: "Completed",
@@ -115,7 +121,7 @@ export function TransactionsTab({
           txData.items.map((item: any) => ({
             transaction_id: transactionData.id,
             product_id: item.productId,
-            product_name: item.productName, // Store product name
+            product_name: item.productName,
             quantity: item.quantity,
             price: item.finalPrice,
             size: item.size,
@@ -150,7 +156,8 @@ export function TransactionsTab({
   
       toast.success(
         totalPoints > 0 
-          ? `Transaction recorded and ${totalPoints} points added!`
+          ? `Transaction recorded and ${totalPoints} points added!` + 
+            (pointsExpiresAt ? ` (expires in 15 days)` : '')
           : "Transaction recorded!"
       );
       
@@ -161,7 +168,6 @@ export function TransactionsTab({
       toast.error("Error recording transaction");
     }
   };
-
   if (loading) {
     return (
       <div className="flex justify-center p-8">Loading transactions...</div>

@@ -4,9 +4,14 @@ export interface CustomerData {
     cardNumber: string;
     balance: number;
     points: number;
+    cardStatus: string;
+    createdAt: string;
     pointsToNextReward: number;
     recentTransactions: Transaction[];
     availableRewards: Reward[];
+    expiringPoints: number;
+    pointsExpirationDate?: Date | null;
+    
   }
   
   export interface Transaction {

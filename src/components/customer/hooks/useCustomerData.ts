@@ -1,20 +1,30 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { CustomerData } from "../types";
+import { checkExpiredPoints, getExpiringPoints } from "@/lib/pointsExpiration";
 
 export function useCustomerData(user: any) {
   const [loading, setLoading] = useState(true);
-  const [customerData, setCustomerData] = useState<CustomerData & { cardId?: string, redemptionHistory?: any[] }>({
+  const [customerData, setCustomerData] = useState<CustomerData & { 
+    cardId?: string, 
+    redemptionHistory?: any[],
+    expiringPoints?: number,
+    pointsExpirationDate?: Date | null  // Changed to Date | null
+  }>({
     name: "",
     hasCard: false,
     cardNumber: "",
     cardId: "",
     balance: 0,
     points: 0,
+    expiringPoints: 0,
+    pointsExpirationDate: null,
     pointsToNextReward: 1500,
+    cardStatus: "active",
+    createdAt: "",
     recentTransactions: [],
     availableRewards: [],
-    redemptionHistory: []  // <-- NEW
+    redemptionHistory: []
   });
 
   const fetchData = useCallback(async () => {
@@ -25,19 +35,23 @@ export function useCustomerData(user: any) {
       // 1. Fetch profile
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, created_at")
         .eq("id", user.id)
         .single();
 
       // Initialize default data
-      const defaultData: CustomerData & { cardId?: string, redemptionHistory?: any[] } = {
+      const defaultData = {
         name: profileData?.full_name || "anonymous",
         hasCard: false,
         cardNumber: "",
         cardId: "",
         balance: 0,
         points: 0,
+        expiringPoints: 0,
+        pointsExpirationDate: null,
         pointsToNextReward: 1500,
+        cardStatus: "active",
+        createdAt: profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString() : "",
         recentTransactions: [],
         availableRewards: [],
         redemptionHistory: []
@@ -46,7 +60,7 @@ export function useCustomerData(user: any) {
       // 2. Try to fetch card
       const { data: cards } = await supabase
         .from("cards")
-        .select("id, uid, balance, points")
+        .select("id, uid, balance, points, status, created_at")
         .eq("user_id", user.id)
         .limit(1);
 
@@ -56,13 +70,30 @@ export function useCustomerData(user: any) {
         return;
       }
 
+      // Handle expired points
+      try {
+        await checkExpiredPoints(card.id);
+      } catch (error) {
+        console.error("Failed to check expired points:", error);
+      }
+
+      // Get expiring points data
+      let expiringPoints = 0;
+      let pointsExpirationDate = null;
+      try {
+        const expiringData = await getExpiringPoints(card.id);
+        expiringPoints = expiringData.expiringPoints;
+        pointsExpirationDate = expiringData.nextExpirationDate;
+      } catch (error) {
+        console.error("Failed to get expiring points:", error);
+      }
+
       // 3. Fetch transactions
       const { data: transactions } = await supabase
         .from("transactions")
         .select("id, amount, item_count, status, type, created_at, points")
         .eq("card_id", card.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
+        .order("created_at", { ascending: false });
 
       // 4. Fetch rewards
       const { data: rewards } = await supabase
@@ -71,13 +102,12 @@ export function useCustomerData(user: any) {
         .lte("points_required", card.points)
         .eq("is_active", true);
 
-      // 5. Fetch redemptions (NEW)
+      // 5. Fetch redemptions
       const { data: redemptions } = await supabase
         .from("redemptions")
         .select("id, reward_id, redeemed_at, status, points_used")
         .eq("card_id", card.id)
-        .order("redeemed_at", { ascending: false })
-        .limit(5); // or remove limit if you want all
+        .order("redeemed_at", { ascending: false });
 
       setCustomerData({
         ...defaultData,
@@ -86,6 +116,8 @@ export function useCustomerData(user: any) {
         cardId: card.id,
         balance: card.balance,
         points: card.points,
+        expiringPoints,
+        pointsExpirationDate,
         pointsToNextReward: Math.max(0, 1500 - card.points),
         recentTransactions: transactions?.map(t => ({
           id: t.id,
@@ -119,7 +151,6 @@ export function useCustomerData(user: any) {
     }
   }, [user]);
 
-  // Add refetch function
   const refetch = useCallback(() => {
     return fetchData();
   }, [fetchData]);
@@ -129,23 +160,30 @@ export function useCustomerData(user: any) {
 
     const subscriptions = [
       supabase.channel('card-balance-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'cards',
-            filter: `user_id=eq.${user?.id}`
-          },
-          (payload) => {
-            setCustomerData(prev => ({
-              ...prev,
-              balance: payload.new.balance,
-              points: payload.new.points,
-              pointsToNextReward: Math.max(0, 1500 - payload.new.points)
-            }));
-          }
-        ).subscribe(),
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'cards',
+        filter: `user_id=eq.${user?.id}`
+      },
+      async (payload) => {
+        try {
+          const { expiringPoints, nextExpirationDate } = await getExpiringPoints(payload.new.id);
+          setCustomerData(prev => ({
+            ...prev,
+            balance: payload.new.balance,
+            points: payload.new.points,
+            expiringPoints,
+            pointsExpirationDate: nextExpirationDate, // Now accepts Date | null
+            pointsToNextReward: Math.max(0, 1500 - payload.new.points)
+          }));
+        } catch (error) {
+          console.error("Error updating card balance:", error);
+        }
+      }
+    ).subscribe(),
 
       supabase.channel('new-transactions')
         .on(
@@ -158,26 +196,29 @@ export function useCustomerData(user: any) {
           },
           async () => {
             if (customerData.cardId) {
-              const { data } = await supabase
-                .from("transactions")
-                .select("id, amount, item_count, status, type, created_at, points")
-                .eq("card_id", customerData.cardId)
-                .order("created_at", { ascending: false })
-                .limit(3);
+              try {
+                const { data } = await supabase
+                  .from("transactions")
+                  .select("id, amount, item_count, status, type, created_at, points")
+                  .eq("card_id", customerData.cardId)
+                  .order("created_at", { ascending: false });
 
-              if (data) {
-                setCustomerData(prev => ({
-                  ...prev,
-                  recentTransactions: data.map(t => ({
-                    id: t.id,
-                    date: new Date(t.created_at).toLocaleDateString(),
-                    amount: parseFloat(t.amount).toFixed(2),
-                    items: t.item_count || 0,
-                    type: t.type,
-                    status: t.status,
-                    points: t.points
-                  }))
-                }));
+                if (data) {
+                  setCustomerData(prev => ({
+                    ...prev,
+                    recentTransactions: data.map(t => ({
+                      id: t.id,
+                      date: new Date(t.created_at).toLocaleDateString(),
+                      amount: parseFloat(t.amount).toFixed(2),
+                      items: t.item_count || 0,
+                      type: t.type,
+                      status: t.status,
+                      points: t.points
+                    }))
+                  }));
+                }
+              } catch (error) {
+                console.error("Error updating transactions:", error);
               }
             }
           }
@@ -193,23 +234,27 @@ export function useCustomerData(user: any) {
           },
           async () => {
             if (customerData.cardId) {
-              const { data } = await supabase
-                .from("rewards")
-                .select("id, name, description, points_required, quantity")
-                .lte("points_required", customerData.points)
-                .eq("is_active", true);
+              try {
+                const { data } = await supabase
+                  .from("rewards")
+                  .select("id, name, description, points_required, quantity")
+                  .lte("points_required", customerData.points)
+                  .eq("is_active", true);
 
-              if (data) {
-                setCustomerData(prev => ({
-                  ...prev,
-                  availableRewards: data.map(r => ({
-                    id: r.id,
-                    name: r.name,
-                    description: r.description,
-                    points_required: r.points_required,
-                    quantity: r.quantity
-                  }))
-                }));
+                if (data) {
+                  setCustomerData(prev => ({
+                    ...prev,
+                    availableRewards: data.map(r => ({
+                      id: r.id,
+                      name: r.name,
+                      description: r.description,
+                      points_required: r.points_required,
+                      quantity: r.quantity
+                    }))
+                  }));
+                }
+              } catch (error) {
+                console.error("Error updating rewards:", error);
               }
             }
           }

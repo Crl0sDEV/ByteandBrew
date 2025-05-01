@@ -23,7 +23,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Check, X,} from "lucide-react";
+import { Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import Header from "@/components/Header copy";
 
 export default function AccountSettingsCustomer() {
@@ -91,7 +91,7 @@ export default function AccountSettingsCustomer() {
 
           const { data: profile, error } = await supabase
             .from("profiles")
-            .select("full_name, role") 
+            .select("full_name, role")
             .eq("id", user.id)
             .single();
 
@@ -136,7 +136,7 @@ export default function AccountSettingsCustomer() {
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: user.id,
         full_name: fullName,
-        role: currentProfile?.role || 'customer',
+        role: currentProfile?.role || "customer",
         updated_at: new Date().toISOString(),
       });
 
@@ -199,10 +199,10 @@ export default function AccountSettingsCustomer() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-    <main className="flex-1 p-6 layout-background">
-      {/* Center the content */}
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <main className="flex-1 p-6 layout-background">
+        {/* Center the content */}
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Account Information */}
             <div className="space-y-6 h-full">
               <Card className="h-full">
@@ -297,19 +297,25 @@ export default function AccountSettingsCustomer() {
 
                         <div className="space-y-4 py-4">
                           <div className="space-y-2">
-                            <Label htmlFor="currentPassword">Current Password</Label>
+                            <Label htmlFor="currentPassword">
+                              Current Password
+                            </Label>
                             <div className="relative">
                               <Input
                                 id="currentPassword"
                                 type={showCurrentPassword ? "text" : "password"}
                                 value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                onChange={(e) =>
+                                  setCurrentPassword(e.target.value)
+                                }
                                 placeholder="Enter current password"
                               />
                               <button
                                 type="button"
                                 className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                onClick={() =>
+                                  setShowCurrentPassword(!showCurrentPassword)
+                                }
                               >
                                 {showCurrentPassword ? (
                                   <EyeOff className="h-4 w-4" />
@@ -336,7 +342,9 @@ export default function AccountSettingsCustomer() {
                               <button
                                 type="button"
                                 className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                onClick={() =>
+                                  setShowNewPassword(!showNewPassword)
+                                }
                               >
                                 {showNewPassword ? (
                                   <EyeOff className="h-4 w-4" />
@@ -365,7 +373,9 @@ export default function AccountSettingsCustomer() {
                               <button
                                 type="button"
                                 className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                onClick={() =>
+                                  setShowConfirmPassword(!showConfirmPassword)
+                                }
                               >
                                 {showConfirmPassword ? (
                                   <EyeOff className="h-4 w-4" />
@@ -378,57 +388,66 @@ export default function AccountSettingsCustomer() {
 
                           {/* Password Requirements */}
                           <div className="space-y-2 text-sm">
-                            <p className="font-medium">Password Requirements:</p>
-                            <ul className="space-y-1">
-                              <li className="flex items-center">
-                                {passwordErrors.length ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                At least 8 characters
-                              </li>
-                              <li className="flex items-center">
-                                {passwordErrors.uppercase ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                At least one uppercase letter
-                              </li>
-                              <li className="flex items-center">
-                                {passwordErrors.lowercase ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                At least one lowercase letter
-                              </li>
-                              <li className="flex items-center">
-                                {passwordErrors.number ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                At least one number
-                              </li>
-                              <li className="flex items-center">
-                                {passwordErrors.specialChar ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                At least one special character
-                              </li>
-                              <li className="flex items-center">
-                                {passwordErrors.match ? (
-                                  <Check className="w-4 h-4 text-green-500 mr-2" />
-                                ) : (
-                                  <X className="w-4 h-4 text-red-500 mr-2" />
-                                )}
-                                Passwords match
-                              </li>
-                            </ul>
+                            <p className="font-medium">
+                              Password Requirements:
+                            </p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                              {/* Left Column */}
+                              <div className="space-y-1">
+                                <li className="flex items-center">
+                                  {passwordErrors.length ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  At least 8 characters
+                                </li>
+                                <li className="flex items-center">
+                                  {passwordErrors.uppercase ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  At least one uppercase letter
+                                </li>
+                                <li className="flex items-center">
+                                  {passwordErrors.lowercase ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  At least one lowercase letter
+                                </li>
+                              </div>
+
+                              {/* Right Column */}
+                              <div className="space-y-1">
+                                <li className="flex items-center">
+                                  {passwordErrors.number ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  At least one number
+                                </li>
+                                <li className="flex items-center">
+                                  {passwordErrors.specialChar ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  At least one special character
+                                </li>
+                                <li className="flex items-center">
+                                  {passwordErrors.match ? (
+                                    <Check className="w-4 h-4 text-green-500 mr-2" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mr-2" />
+                                  )}
+                                  Passwords match
+                                </li>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -464,7 +483,7 @@ export default function AccountSettingsCustomer() {
             </div>
           </div>
         </div>
-    </main>
+      </main>
     </div>
   );
 }

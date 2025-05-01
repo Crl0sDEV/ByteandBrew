@@ -6,7 +6,6 @@ import { CardStats } from "../components/customer/components/CardStats";
 import { TransactionsSection } from "../components/customer/components/TransactionsSection";
 import { RewardsSection } from "../components/customer/components/RewardsSection";
 import { GetStartedSection } from "../components/customer/components/GetStartedSection";
-import { QuickActions } from "../components/customer/components/QuickActions";
 import { RedemptionHistorySection } from "../components/customer/components/RedemptionHistory";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,7 +73,10 @@ export default function CustomerDashboard() {
           cardNumber={customerData.cardNumber}
           balance={customerData.balance}
           points={customerData.points}
+          cardStatus={customerData.cardStatus}
+  createdAt={customerData.createdAt}
           pointsToNextReward={customerData.pointsToNextReward}
+          expiringPoints={customerData.expiringPoints || 0}
           cardId={customerData.cardId || ''} 
           onReloadSuccess={() => refetch()} 
         />
@@ -96,7 +98,6 @@ export default function CustomerDashboard() {
           <GetStartedSection hasCard={customerData.hasCard} />
         )}
 
-        <QuickActions hasCard={customerData.hasCard} />
         {customerData.hasCard && (
   <div className="mt-6">
     <RedemptionHistorySection redemptions={customerData.redemptionHistory || []} />
