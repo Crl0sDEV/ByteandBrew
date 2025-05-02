@@ -8,8 +8,9 @@ export function useCustomerData(user: any) {
   const [customerData, setCustomerData] = useState<CustomerData & { 
     cardId?: string, 
     redemptionHistory?: any[],
-    expiringPoints?: number,
-    pointsExpirationDate?: Date | null  // Changed to Date | null
+    deactivationReason?: string | null,
+    deactivatedAt?: string | null,
+    activatedAt?: string | null
   }>({
     name: "",
     hasCard: false,
@@ -20,11 +21,14 @@ export function useCustomerData(user: any) {
     expiringPoints: 0,
     pointsExpirationDate: null,
     pointsToNextReward: 1500,
-    cardStatus: "active",
+    cardStatus: "inactive",
     createdAt: "",
     recentTransactions: [],
     availableRewards: [],
-    redemptionHistory: []
+    redemptionHistory: [],
+    deactivationReason: null,
+    deactivatedAt: null,
+    activatedAt: null
   });
 
   const fetchData = useCallback(async () => {
@@ -50,11 +54,14 @@ export function useCustomerData(user: any) {
         expiringPoints: 0,
         pointsExpirationDate: null,
         pointsToNextReward: 1500,
-        cardStatus: "active",
+        cardStatus: "inactive",
         createdAt: profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString() : "",
         recentTransactions: [],
         availableRewards: [],
-        redemptionHistory: []
+        redemptionHistory: [],
+        deactivationReason: null,
+        deactivatedAt: null,
+        activatedAt: null
       };
 
       // 2. Try to fetch card
@@ -68,6 +75,20 @@ export function useCustomerData(user: any) {
       if (!card) {
         setCustomerData(defaultData);
         return;
+      }
+
+      // Fetch deactivation info if card is inactive
+      let deactivationInfo = null;
+      if (card.status?.toLowerCase().trim() !== 'active') {
+        const { data: deactivationData } = await supabase
+          .from("card_deactivations")
+          .select("reason, deactivated_at")
+          .eq("card_id", card.id)
+          .order("deactivated_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        deactivationInfo = deactivationData;
       }
 
       // Handle expired points
@@ -109,6 +130,9 @@ export function useCustomerData(user: any) {
         .eq("card_id", card.id)
         .order("redeemed_at", { ascending: false });
 
+      // Normalize card status
+      const normalizedCardStatus = card.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive';
+
       setCustomerData({
         ...defaultData,
         hasCard: true,
@@ -119,6 +143,10 @@ export function useCustomerData(user: any) {
         expiringPoints,
         pointsExpirationDate,
         pointsToNextReward: Math.max(0, 1500 - card.points),
+        cardStatus: normalizedCardStatus,
+        deactivationReason: deactivationInfo?.reason || null,
+        deactivatedAt: deactivationInfo?.deactivated_at || null,
+        activatedAt: normalizedCardStatus === 'active' ? card.created_at : null,
         recentTransactions: transactions?.map(t => ({
           id: t.id,
           date: new Date(t.created_at).toLocaleDateString(),
@@ -160,30 +188,31 @@ export function useCustomerData(user: any) {
 
     const subscriptions = [
       supabase.channel('card-balance-changes')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'cards',
-        filter: `user_id=eq.${user?.id}`
-      },
-      async (payload) => {
-        try {
-          const { expiringPoints, nextExpirationDate } = await getExpiringPoints(payload.new.id);
-          setCustomerData(prev => ({
-            ...prev,
-            balance: payload.new.balance,
-            points: payload.new.points,
-            expiringPoints,
-            pointsExpirationDate: nextExpirationDate, // Now accepts Date | null
-            pointsToNextReward: Math.max(0, 1500 - payload.new.points)
-          }));
-        } catch (error) {
-          console.error("Error updating card balance:", error);
-        }
-      }
-    ).subscribe(),
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'cards',
+            filter: `user_id=eq.${user?.id}`
+          },
+          async (payload) => {
+            try {
+              const { expiringPoints, nextExpirationDate } = await getExpiringPoints(payload.new.id);
+              setCustomerData(prev => ({
+                ...prev,
+                balance: payload.new.balance,
+                points: payload.new.points,
+                expiringPoints,
+                pointsExpirationDate: nextExpirationDate,
+                pointsToNextReward: Math.max(0, 1500 - payload.new.points),
+                cardStatus: payload.new.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive' // Update status
+              }));
+            } catch (error) {
+              console.error("Error updating card balance:", error);
+            }
+          }
+        ).subscribe(),
 
       supabase.channel('new-transactions')
         .on(

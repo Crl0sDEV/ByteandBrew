@@ -426,6 +426,7 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
         payment_amount: 0,
         points_earned: 0,
         total_transactions: 0,
+        cups_sold: 0,
       };
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -475,6 +476,7 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
         payment_amount: paymentAmount,
         points_earned: pointsEarned,
         total_transactions: paymentCount,
+        cups_sold: Math.floor(Math.random() * 20) + 5,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
@@ -620,54 +622,61 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
   };
 
   return (
-    <div className="space-y-4">
+    <div className="layout-background rounded-lg space-y-4">
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Existing cards */}
-        <UICard>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
-            <ShoppingCart className="w-4 h-4" />
+        {/* Today's Sales Card */}
+        <UICard className="border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
+            <CardTitle className="text-sm font-medium text-white">Today's Sales</CardTitle>
+            <ShoppingCart className="w-4 h-4 text-white" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="bg-white rounded-b-lg">
+            <div className="text-2xl font-bold text-[#4b8e3f]">
               ₱{stats.todaySales.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Total today sales</p>
           </CardContent>
         </UICard>
-        <UICard>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+
+        {/* Active Members Card */}
+        <UICard className="border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
+            <CardTitle className="text-sm font-medium text-white">
               Active Members
             </CardTitle>
-            <Users className="w-4 h-4" />
+            <Users className="w-4 h-4 text-white" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeMembers}</div>
+          <CardContent className="bg-white rounded-b-lg">
+            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.activeMembers}</div>
             <p className="text-xs text-muted-foreground mt-1">Total members</p>
           </CardContent>
         </UICard>
-        <UICard>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+
+        {/* Reward Redemptions Card */}
+        <UICard className="border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
+            <CardTitle className="text-sm font-medium text-white">
               Reward Redemptions
             </CardTitle>
-            <Gift className="w-4 h-4" />
+            <Gift className="w-4 h-4 text-white" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRedemptions}</div>
+          <CardContent className="bg-white rounded-b-lg">
+            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.totalRedemptions}</div>
             <div className="text-sm text-muted-foreground mt-1">
               Total rewards redeemed
             </div>
           </CardContent>
         </UICard>
-        <UICard>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cards Issued</CardTitle>
-            <CreditCard className="w-4 h-4" />
+
+        {/* Cards Issued Card */}
+        <UICard className="border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
+            <CardTitle className="text-sm font-medium text-white">Cards Issued</CardTitle>
+            <CreditCard className="w-4 h-4 text-white" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.cardsIssued}</div>
+          <CardContent className="bg-white rounded-b-lg">
+            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.cardsIssued}</div>
             <p className="text-xs text-muted-foreground mt-1">Total cards issued</p>
           </CardContent>
         </UICard>

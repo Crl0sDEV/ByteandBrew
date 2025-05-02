@@ -77,7 +77,9 @@ export default function CustomerDashboard() {
   createdAt={customerData.createdAt}
           pointsToNextReward={customerData.pointsToNextReward}
           expiringPoints={customerData.expiringPoints || 0}
-          cardId={customerData.cardId || ''} 
+          cardId={customerData.cardId || ''}
+          deactivatedAt={customerData.deactivatedAt}
+          deactivationReason={customerData.deactivationReason}
           onReloadSuccess={() => refetch()} 
         />
 

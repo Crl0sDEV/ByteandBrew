@@ -20,48 +20,53 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 
-interface Notification {
+interface Redemption {
   id: string;
-  created_at: string;
-  points: number;
-  cards: { uid: string } | null;
-  type: string;
+  redeemed_at: string;
+  points_used: number;
   status: string;
   read: boolean;
+  rewards: {
+    name: string;
+    points_required: number;
+  } | null;
+  cards: {
+    uid: string;
+  } | null;
 }
 
 export function Header() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [selectedNotification, setSelectedNotification] =
-    useState<Notification | null>(null);
+  const [selectedRedemption, setSelectedRedemption] =
+    useState<Redemption | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-useEffect(() => {
-  if (!user?.id) return;
 
-  const profileChannel = supabase
-    .channel('realtime-profile')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${user.id}`
-      },
-      (payload) => {
-        setProfile(payload.new);
-      }
-    )
-    .subscribe();
+  useEffect(() => {
+    if (!user?.id) return;
 
-  return () => {
-    supabase.removeChannel(profileChannel);
-  };
-}, [user?.id]);
+    const profileChannel = supabase
+      .channel('realtime-profile')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileChannel);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -96,20 +101,19 @@ useEffect(() => {
     };
 
     fetchSession();
-    fetchNotifications();
+    fetchRedemptions();
 
     const channel = supabase
-      .channel("realtime-notifications")
+      .channel("realtime-redemptions")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "transactions",
-          filter: "status=eq.Completed",
+          table: "redemptions",
         },
         () => {
-          fetchNotifications();
+          fetchRedemptions();
         }
       )
       .subscribe();
@@ -119,64 +123,71 @@ useEffect(() => {
     };
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchRedemptions = async () => {
     const { data, error } = await supabase
-      .from("transactions")
-      .select("id, created_at, points, cards(uid), type, status, read")
-      .eq("status", "Completed")
-      .order("created_at", { ascending: false });
+      .from("redemptions")
+      .select(`
+        id, 
+        redeemed_at, 
+        points_used, 
+        status, 
+        read,
+        rewards:reward_id (name, points_required),
+        cards:card_id (uid)
+      `)
+      .order("redeemed_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("Error fetching redemptions:", error);
       return;
     }
 
     if (data) {
-      setNotifications(data);
-      const unread = data.filter((n) => !n.read).length;
+      setRedemptions(data);
+      const unread = data.filter((r) => !r.read).length;
       setUnreadCount(unread);
     }
   };
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (redemptionId: string) => {
     const { error } = await supabase
-      .from("transactions")
+      .from("redemptions")
       .update({ read: true })
-      .eq("id", notificationId);
+      .eq("id", redemptionId);
 
     if (error) {
       console.error("Error marking as read:", error);
       return;
     }
 
-    setNotifications(
-      notifications.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n
+    setRedemptions(
+      redemptions.map((r) =>
+        r.id === redemptionId ? { ...r, read: true } : r
       )
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
-  const handleNotificationClick = (
-    notification: Notification,
+  const handleRedemptionClick = (
+    redemption: Redemption,
     e: React.MouseEvent
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    setSelectedNotification(notification);
+    setSelectedRedemption(redemption);
     setIsDropdownOpen(false);
-    if (!notification.read) {
-      markAsRead(notification.id);
+    if (!redemption.read) {
+      markAsRead(redemption.id);
     }
   };
 
   const markAllAsRead = async () => {
-    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    const unreadIds = redemptions.filter((r) => !r.read).map((r) => r.id);
 
     if (unreadIds.length === 0) return;
 
     const { error } = await supabase
-      .from("transactions")
+      .from("redemptions")
       .update({ read: true })
       .in("id", unreadIds);
 
@@ -185,10 +196,9 @@ useEffect(() => {
       return;
     }
 
-    // Update local state
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    setRedemptions(redemptions.map((r) => ({ ...r, read: true })));
     setUnreadCount(0);
-    setIsDropdownOpen(false); // Close dropdown after marking all as read
+    setIsDropdownOpen(false);
   };
 
   return (
@@ -222,34 +232,37 @@ useEffect(() => {
             className="w-[350px] mr-4"
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            <div className="px-3 py-2 font-semibold text-sm">Notifications</div>
+            <div className="px-3 py-2 font-semibold text-sm">Reward Redemptions</div>
             <DropdownMenuSeparator />
             <ScrollArea className="h-[300px]">
-              {notifications.length === 0 ? (
+              {redemptions.length === 0 ? (
                 <DropdownMenuItem disabled className="text-center py-4">
-                  No new notifications
+                  No new redemptions
                 </DropdownMenuItem>
               ) : (
-                notifications.map((notification) => (
+                redemptions.map((redemption) => (
                   <DropdownMenuItem
-                    key={notification.id}
+                    key={redemption.id}
                     className={`flex flex-col items-start ${
-                      !notification.read ? "bg-gray-50" : ""
+                      !redemption.read ? "bg-gray-50" : ""
                     }`}
-                    onClick={(e) => handleNotificationClick(notification, e)}
+                    onClick={(e) => handleRedemptionClick(redemption, e)}
                   >
                     <div className="flex w-full justify-between">
                       <span className="font-medium">
-                        {notification.points || 0} points — {notification.type}
+                        {redemption.rewards?.name || "Unknown Reward"} redeemed
                       </span>
-                      {!notification.read && (
+                      {!redemption.read && (
                         <span className="h-2 w-2 rounded-full bg-blue-500"></span>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      Card: {notification.cards?.uid || "N/A"} •{" "}
+                      {redemption.points_used} points • Status: {redemption.status}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Card: {redemption.cards?.uid || "N/A"} •{" "}
                       {format(
-                        new Date(notification.created_at),
+                        new Date(redemption.redeemed_at),
                         "MMM d, h:mm a"
                       )}
                     </span>
@@ -278,43 +291,49 @@ useEffect(() => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Notification Detail Dialog */}
+        {/* Redemption Detail Dialog */}
         <Dialog
-          open={!!selectedNotification}
+          open={!!selectedRedemption}
           onOpenChange={(open) => {
-            if (!open) setSelectedNotification(null);
+            if (!open) setSelectedRedemption(null);
           }}
         >
           <DialogContent className="sm:max-w-[425px]">
-            {selectedNotification && (
+            {selectedRedemption && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Transaction Details</DialogTitle>
+                  <DialogTitle>Redemption Details</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <span className="text-sm font-medium">Points:</span>
+                    <span className="text-sm font-medium">Reward:</span>
                     <span className="col-span-3">
-                      {selectedNotification.points || 0}
+                      {selectedRedemption.rewards?.name || "Unknown Reward"}
                     </span>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <span className="text-sm font-medium">Type:</span>
+                    <span className="text-sm font-medium">Points Used:</span>
                     <span className="col-span-3">
-                      {selectedNotification.type}
+                      {selectedRedemption.points_used}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <span className="text-sm font-medium">Status:</span>
+                    <span className="col-span-3">
+                      {selectedRedemption.status}
                     </span>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <span className="text-sm font-medium">Card:</span>
                     <span className="col-span-3">
-                      {selectedNotification.cards?.uid || "N/A"}
+                      {selectedRedemption.cards?.uid || "N/A"}
                     </span>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <span className="text-sm font-medium">Date:</span>
+                    <span className="text-sm font-medium">Redeemed:</span>
                     <span className="col-span-3">
                       {format(
-                        new Date(selectedNotification.created_at),
+                        new Date(selectedRedemption.redeemed_at),
                         "MMM d, yyyy h:mm a"
                       )}
                     </span>

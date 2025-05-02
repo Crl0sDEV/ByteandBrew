@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Card as LoyaltyCard, Product } from "../types";
 import { toast } from "sonner";
-import { X, Plus} from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RFIDScanner } from "./RFIDScanner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,9 +22,17 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
+// Match the size options from ProductForm
+const SIZE_OPTIONS = [
+  { value: "small", label: "S(12oz)", priceModifier: 0 },
+  { value: "medium", label: "M(16oz)", priceModifier: 10 },
+  { value: "large", label: "L(20oz)", priceModifier: 20 },
+] as const;
+
 interface SelectedProduct {
   product: Product;
   size: string | null;
+  sizePrice: number | null;
   temperature: string | null;
   isAddOn: boolean;
   quantity: number;
@@ -43,22 +51,21 @@ export function ManualTransactionCard({
 }: ManualTransactionCardProps) {
   const POINTS_EXPIRATION_DAYS = 15;
   const [selectedCardId, setSelectedCardId] = useState("");
-  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(
-    []
-  );
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [currentSize, setCurrentSize] = useState<string | null>(null);
-  const [currentTemperature, setCurrentTemperature] = useState<string | null>(
-    null
-  );
+  const [currentSizePrice, setCurrentSizePrice] = useState<number | null>(null);
+  const [currentTemperature, setCurrentTemperature] = useState<string | null>(null);
   const [currentIsAddOn, setCurrentIsAddOn] = useState(false);
   const [currentQuantity, setCurrentQuantity] = useState(1);
   const [scannedUid, setScannedUid] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  
   const categories = [
     "all",
     ...new Set(products.map((p) => p.category).filter(Boolean)),
   ] as string[];
+  
   const filteredProducts =
     selectedCategory === "all"
       ? products.filter((p) => p.is_active)
@@ -74,20 +81,14 @@ export function ManualTransactionCard({
     }
   };
 
-  const getFinalPrice = (product: Product, size: string | null) => {
+  const getFinalPrice = (product: Product, sizePrice: number | null) => {
     const basePrice = Number(product.base_price) || 0;
-
-    if (!product.has_sizes || !size) {
-      return basePrice;
-    }
-
-    const sizePrice = Number(product.sizes?.[size]) || 0;
-    return sizePrice > 0 ? sizePrice : basePrice;
+    return sizePrice !== null ? basePrice + sizePrice : basePrice;
   };
 
   const calculateTotal = () => {
     return selectedProducts.reduce((total, item) => {
-      const price = getFinalPrice(item.product, item.size);
+      const price = getFinalPrice(item.product, item.sizePrice);
       return total + price * item.quantity;
     }, 0);
   };
@@ -117,6 +118,7 @@ export function ManualTransactionCard({
       return {
         product: product!,
         size: currentSize,
+        sizePrice: currentSizePrice,
         temperature: currentTemperature,
         isAddOn: currentIsAddOn,
         quantity: currentQuantity,
@@ -126,6 +128,7 @@ export function ManualTransactionCard({
     setSelectedProducts([...selectedProducts, ...newSelectedProducts]);
     setSelectedProductIds([]);
     setCurrentSize(null);
+    setCurrentSizePrice(null);
     setCurrentTemperature(null);
     setCurrentIsAddOn(false);
     setCurrentQuantity(1);
@@ -144,7 +147,6 @@ export function ManualTransactionCard({
     const totalAmount = calculateTotal();
     const totalPoints = calculateTotalPoints();
     
-    // Calculate expiration date if points are being earned
     const pointsExpiresAt = totalPoints > 0 
       ? new Date(Date.now() + POINTS_EXPIRATION_DAYS * 24 * 60 * 60 * 1000).toISOString()
       : null;
@@ -156,8 +158,9 @@ export function ManualTransactionCard({
           productId: item.product.id,
           productName: item.product.name,
           basePrice: item.product.base_price,
-          finalPrice: getFinalPrice(item.product, item.size),
+          finalPrice: getFinalPrice(item.product, item.sizePrice),
           size: item.size,
+          sizePrice: item.sizePrice,
           hasSizes: item.product.has_sizes,
           category: item.product.category,
           temperature: item.temperature,
@@ -187,11 +190,19 @@ export function ManualTransactionCard({
     }
   };
 
-  const selectedCard = cards.find((card) => card.id === selectedCardId);
-  const hasSizesSelected = selectedProductIds.some((id) => {
+const selectedCard = cards.find((card) => card.id === selectedCardId);
+const hasSizesSelected = selectedProductIds.some((id) => {
     const product = products.find((p) => p.id === id);
     return product?.has_sizes;
-  });
+});
+
+// Get available sizes from selected products
+const availableSizes = SIZE_OPTIONS.filter(option => {
+    return selectedProductIds.some(id => {
+        const product = products.find(p => p.id === id);
+        return product?.has_sizes && Array.isArray(product.sizes) && product.sizes.includes(option.value);
+    });
+});
 
   return (
     <UICard>
@@ -199,68 +210,69 @@ export function ManualTransactionCard({
         <CardTitle>Create Manual Transaction</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6">
           {/* Left Column - Add Products */}
           <div className="bg-gray-50 p-4 rounded-lg h-full flex flex-col min-h-[500px]">
-          <div className="flex justify-between items-center mb-2 px-2 w-full">
-  <h3 className="font-medium text-lg">Add Products</h3>
-  <div className="w-[150px]"> {/* Fixed width - adjust as needed */}
-    <Select
-      value={selectedCategory}
-      onValueChange={setSelectedCategory}
-    >
-      <SelectTrigger className="h-8 w-full"> {/* Make trigger fill container */}
-        <SelectValue placeholder="Filter by category" />
-      </SelectTrigger>
-      <SelectContent className="w-[180px]"> {/* Match trigger width */}
-        {categories.map((category) => (
-          <SelectItem key={category} value={category}>
-            {category === "all" ? "All Categories" : category}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-</div>
+            <div className="flex justify-between items-center mb-2 px-2 w-full">
+              <h3 className="font-medium text-lg">Add Products</h3>
+              <div className="w-[150px]">
+                <Select
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                >
+                  <SelectTrigger className="h-8 w-full">
+                    <SelectValue placeholder="Filter by category" />
+                  </SelectTrigger>
+                  <SelectContent className="w-[180px]">
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category === "all" ? "All Categories" : category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-            {/* Product Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 flex-1 overflow-y-auto p-2">
-            {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className={`relative border rounded-lg p-2 cursor-pointer transition-all ${
-                      selectedProductIds.includes(product.id)
-                        ? "ring-2 ring-primary bg-primary/10"
-                        : "hover:bg-gray-100"
-                    }`}
-                    onClick={() => handleProductSelection(product.id)}
-                  >
-                    <div className="absolute top-2 right-2">
-                      <Checkbox
-                        checked={selectedProductIds.includes(product.id)}
-                        onCheckedChange={() =>
-                          handleProductSelection(product.id)
-                        }
-                        className="h-5 w-5 rounded-full border-2 border-primary data-[state=checked]:bg-primary"
-                      />
+            {/* Product Grid - Updated with fixed height */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 p-2 max-h-[500px] overflow-y-auto">
+              {filteredProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className={`relative border rounded-lg p-2 cursor-pointer transition-all h-[250px] flex flex-col ${
+                    selectedProductIds.includes(product.id)
+                      ? "ring-2 ring-primary bg-primary/10"
+                      : "hover:bg-gray-100"
+                  }`}
+                  onClick={() => handleProductSelection(product.id)}
+                >
+                  <div className="absolute top-2 right-2">
+                    <Checkbox
+                      checked={selectedProductIds.includes(product.id)}
+                      onCheckedChange={() =>
+                        handleProductSelection(product.id)
+                      }
+                      className="h-5 w-5 rounded-full border-2 border-primary data-[state=checked]:bg-primary"
+                    />
+                  </div>
+
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-24 object-cover rounded-md mb-2"
+                    />
+                  ) : (
+                    <div className="w-full h-24 bg-gray-200 rounded-md mb-2 flex items-center justify-center text-gray-400">
+                      No Image
                     </div>
+                  )}
 
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-24 object-cover rounded-md mb-2"
-                      />
-                    ) : (
-                      <div className="w-full h-24 bg-gray-200 rounded-md mb-2 flex items-center justify-center text-gray-400">
-                        No Image
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <h4 className="font-medium text-sm line-clamp-1">
-                        {product.name}
-                      </h4>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <h4 className="font-medium text-sm line-clamp-1">
+                      {product.name}
+                    </h4>
+                    <div>
                       <div className="flex justify-between items-center">
                         <span className="text-primary font-bold">
                           ₱{product.base_price}
@@ -276,9 +288,15 @@ export function ManualTransactionCard({
                           {product.category}
                         </span>
                       )}
+                    {product.has_sizes && Array.isArray(product.sizes) && (
+                        <div className="text-xs text-gray-500">
+                            Sizes: {product.sizes.join(", ")}
+                        </div>
+                    )}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
 
             {/* Product Options */}
@@ -286,47 +304,59 @@ export function ManualTransactionCard({
               {hasSizesSelected && (
                 <div>
                   <Label>Size (for selected products)</Label>
-                  <select
-                    onChange={(e) => setCurrentSize(e.target.value || null)}
-                    value={currentSize || ""}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  <Select
+                    onValueChange={(value) => {
+                      if (value === "none") {
+                        setCurrentSize(null);
+                        setCurrentSizePrice(null);
+                      } else {
+                        const selectedOption = SIZE_OPTIONS.find(opt => opt.value === value);
+                        if (selectedOption) {
+                          setCurrentSize(selectedOption.value);
+                          setCurrentSizePrice(selectedOption.priceModifier);
+                        }
+                      }
+                    }}
+                    value={currentSize || "none"}
                   >
-                    <option value="">Select size</option>
-                    {selectedProductIds
-                      .flatMap((id) => {
-                        const product = products.find((p) => p.id === id);
-                        return product?.has_sizes
-                          ? Object.entries(product.sizes || {})
-                          : [];
-                      })
-                      .map(([size, price]) => (
-                        <option key={size} value={size}>
-                          {size} - ₱{price}
-                        </option>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Select size</SelectItem>
+                      {availableSizes.map((size) => (
+                        <SelectItem key={size.value} value={size.value}>
+                          {size.label} (+₱{size.priceModifier})
+                        </SelectItem>
                       ))}
-                  </select>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               <div>
                 <Label>Temperature (optional)</Label>
-                <select
-                  onChange={(e) =>
-                    setCurrentTemperature(e.target.value || null)
+                <Select
+                  onValueChange={(value) =>
+                    setCurrentTemperature(value === "none" ? null : value)
                   }
-                  value={currentTemperature || ""}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={currentTemperature || "none"}
                 >
-                  <option value="">Select temperature</option>
-                  <option value="hot">Hot</option>
-                  <option value="cold">Cold</option>
-                  <option value="iced">Iced</option>
-                </select>
+                  <SelectTrigger className="w-full mt-2">
+                    <SelectValue placeholder="Select temperature" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Select temperature</SelectItem>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                    <SelectItem value="iced">Iced</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-4">
                 <div className="w-24">
-                  <Label>Quantity</Label>
+                  <Label className="mb-2">Quantity</Label>
                   <Input
                     type="number"
                     min="1"
@@ -381,7 +411,7 @@ export function ManualTransactionCard({
           </div>
 
           {/* Right Column - Card Selection and Order Summary */}
-          <div className="space-y-4">
+          <div className="px-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="space-y-4">
                 <RFIDScanner onScan={handleCardScan} />
@@ -439,13 +469,18 @@ export function ManualTransactionCard({
                             <p className="font-medium">
                               ₱
                               {(
-                                getFinalPrice(item.product, item.size) *
+                                getFinalPrice(item.product, item.sizePrice) *
                                 item.quantity
                               ).toFixed(2)}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                            {item.size && <span>Size: {item.size}</span>}
+                            {item.size && (
+                              <span>
+                                Size: {SIZE_OPTIONS.find(s => s.value === item.size)?.label || item.size}
+                                {item.sizePrice !== null && ` (+₱${item.sizePrice})`}
+                              </span>
+                            )}
                             {item.temperature && (
                               <span>Temp: {item.temperature}</span>
                             )}

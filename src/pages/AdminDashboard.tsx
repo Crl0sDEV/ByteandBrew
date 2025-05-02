@@ -8,7 +8,7 @@ import { useMembers } from "../components/admin/hooks/useMembers";
 import { useCards } from "../components/admin/hooks/useCards";
 import { useRewards } from "../components/admin/hooks/useRewards";
 import { useProducts } from "../components/admin/hooks/useProducts";
-import { useTransactions } from "../components/admin/hooks/useTransactions"; // Add this import
+import { useTransactions } from "../components/admin/hooks/useTransactions";
 import { StatCards } from "../components/admin/components/StatCards";
 import { TransactionsTab } from "../components/admin/components/TransactionsTab";
 import { MembersTab } from "../components/admin/components/MembersTab";
@@ -27,6 +27,7 @@ import {
 import { CoffeeIcon } from "../components/admin/CoffeeIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabaseClient";
+import { motion } from "framer-motion";
 
 export default function AdminDashboard() {
   const user = useUser();
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
     deleteProduct,
   } = useProducts(user, true);
 
-  // Use the useTransactions hook instead of manual fetching
+  // Use the useTransactions hook
   const { 
     transactions, 
     loading: transactionsLoading, 
@@ -96,8 +97,8 @@ export default function AdminDashboard() {
               transactions={transactions}
               loading={transactionsLoading}
               cards={cards}
-            products={products}
-            onTransactionCreated={refreshTransactions}
+              products={products}
+              onTransactionCreated={refreshTransactions}
             />
           );
         case "members":
@@ -163,31 +164,31 @@ export default function AdminDashboard() {
 
   if (isInitialLoad) {
     return (
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen">
         {/* Sidebar Skeleton */}
-        <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
+        <aside className="fixed top-0 left-0 h-screen w-64 bg-white/95 backdrop-blur-sm border-r border-gray-200 p-4 hidden md:flex flex-col justify-between z-50">
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <Skeleton className="w-8 h-8 rounded-full" />
-              <Skeleton className="h-6 w-32" />
+              <Skeleton className="w-8 h-8 rounded-full bg-gray-200" />
+              <Skeleton className="h-6 w-32 bg-gray-200" />
             </div>
             <div className="space-y-2">
               {[...Array(7)].map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+                <Skeleton key={i} className="h-10 w-full bg-gray-200" />
               ))}
             </div>
           </div>
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full bg-gray-200" />
         </aside>
 
         {/* Main Content Skeleton */}
-        <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full">
+        <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-background">
           <Header />
           <div className="p-8">
-            <Skeleton className="h-8 w-1/3 mb-4" />
+            <Skeleton className="h-8 w-1/3 mb-4 bg-white/80" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-32 bg-white/80" />
               ))}
             </div>
           </div>
@@ -207,32 +208,49 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-screen w-64 bg-white border-r p-4 hidden md:flex flex-col justify-between z-50">
+      <aside className="fixed top-0 left-0 h-screen w-64 bg-white/95 backdrop-blur-sm border-r border-gray-200 p-4 hidden md:flex flex-col justify-between z-50">
         <div>
-          <div className="flex items-center gap-2 mb-6 justify-center">
-            <img src="/logo.png" alt="Byte & Brew Logo" className="w-8 h-8 rounded-full object-contain" />
-            <span className="text-xl font-bold">BYTE & BREW</span>
-          </div>
-          <nav className="flex flex-col gap-2">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 mb-6 justify-center"
+          >
+            <img 
+              src="/logo.png" 
+              alt="Byte & Brew Logo" 
+              className="w-8 h-8 rounded-full object-contain" 
+            />
+            <span className="text-xl font-bold text-gray-800">BYTE & BREW</span>
+          </motion.div>
+          
+          <nav className="flex flex-col gap-1">
             {menuItems.map((item) => (
-              <button
+              <motion.button
                 key={item.value}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
                 onClick={() => handleTabChange(item.value)}
-                className={`flex items-center gap-3 px-4 py-2 transition-colors w-full text-left ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full text-left ${
                   activeTab === item.value
-                    ? "border-b-2 border-primary text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-[#4b8e3f]/10 text-[#4b8e3f] font-medium"
+                    : "text-gray-600 hover:bg-gray-100/50 hover:text-gray-800"
                 }`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
-              </button>
+              </motion.button>
             ))}
           </nav>
         </div>
-        <div>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           <button
             onClick={async () => {
               const { error } = await supabase.auth.signOut();
@@ -242,19 +260,26 @@ export default function AdminDashboard() {
                 window.location.href = "/";
               }
             }}
-            className="flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground w-full text-left"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100/50 hover:text-gray-800 w-full text-left"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
             <span>Logout</span>
           </button>
-        </div>
+        </motion.div>
       </aside>
 
       {/* Main Content Area */}
       <div className="md:ml-64 flex flex-col flex-1 min-h-screen w-full layout-background">
         <Header />
         <main className="p-4 md:p-8 flex-1 w-full overflow-x-hidden">
-          {renderTabContent(activeTab)}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderTabContent(activeTab)}
+          </motion.div>
         </main>
       </div>
     </div>

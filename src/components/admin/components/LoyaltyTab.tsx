@@ -96,13 +96,13 @@ const onAddPoints = async (cardId: string, pointsToAdd: number) => {
   }
 };
 
-const onCardDeactivate = async (cardId: string) => {
+const onCardDeactivate = async (cardId: string, reason: string, deactivatedBy: string) => {
   try {
-    const { data, error } = await supabase
-      .from("cards")
-      .update({ status: "inactive" })
-      .eq("id", cardId)
-      .select();
+    const { data, error } = await supabase.rpc('deactivate_card_with_reason', {
+      card_id: cardId,
+      deactivation_reason: reason,
+      deactivated_by: deactivatedBy
+    });
 
     if (error) throw error;
 
@@ -130,6 +130,15 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
   );
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState("lost");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
+  }, []);
 
   const membersWithoutCards = (members ?? []).filter(
     (member) => !(cards ?? []).some((card) => card.user_id === member.id)
@@ -179,18 +188,25 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
   };
 
   const handleDeactivateCard = async () => {
-    if (!selectedCard) return;
+    if (!selectedCard || !currentUser) return;
 
     try {
-      await onCardDeactivate(selectedCard.id);
+      await onCardDeactivate(
+        selectedCard.id, 
+        deactivationReason, 
+        currentUser.id
+      );
+      
       toast.success("Card Deactivated", {
-        description: `Card ${selectedCard.uid} has been deactivated`,
+        description: `Card ${selectedCard.uid} has been deactivated (Reason: ${deactivationReason})`,
       });
       resetState();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not deactivate card"
       );
+    } finally {
+      setShowDeactivateConfirm(false);
     }
   };
 
@@ -482,6 +498,11 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
             <DialogDescription>
               This card has {selectedCard?.points || 0} points. Are you sure you
               want to deactivate it?
+              {selectedCard && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium">Reason: {deactivationReason}</p>
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
