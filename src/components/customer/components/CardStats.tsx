@@ -39,10 +39,10 @@ export function CardStats({
   const toggleCardNumber = () => setShowCardNumber(!showCardNumber);
   const toggleDetails = () => setShowDetails(!showDetails);
 
-  // Normalize card status
+  
   const normalizedCardStatus = cardStatus.toLowerCase().trim();
 
-  // Get status message based on card status
+  
   const getStatusMessage = () => {
     if (normalizedCardStatus === 'active') {
       return activatedAt 
@@ -58,7 +58,7 @@ export function CardStats({
     }
   };
 
-  // Format deactivation reason for display
+  
   const formatDeactivationReason = (reason: string) => {
     switch (reason) {
       case 'lost':

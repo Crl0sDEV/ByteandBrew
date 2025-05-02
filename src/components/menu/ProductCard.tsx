@@ -25,7 +25,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product }: { product: Product;  className: string; }) {
   return (
     <motion.div
       initial="hidden"

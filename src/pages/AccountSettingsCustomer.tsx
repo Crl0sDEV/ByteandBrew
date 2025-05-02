@@ -100,6 +100,7 @@ export default function AccountSettingsCustomer() {
             setFullName(profile.full_name || "");
           }
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         toast.error("Failed to load user data");
       } finally {

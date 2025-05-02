@@ -67,7 +67,6 @@ export default function AdminDashboard() {
   const { 
     transactions, 
     loading: transactionsLoading, 
-    error: transactionsError,
     refreshTransactions 
   } = useTransactions(user, true);
 

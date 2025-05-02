@@ -31,7 +31,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: { r
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedRewards = rewards.slice(startIndex, endIndex);
 
-  const goToPage = (page: number) => setCurrentPage(page);
   const goToNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
   const goToPrevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
 

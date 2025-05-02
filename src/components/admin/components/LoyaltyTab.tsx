@@ -55,47 +55,6 @@ const onCardRegister = async (uid: string, userId: string) => {
   return data;
 };
 
-const onAddPoints = async (cardId: string, pointsToAdd: number) => {
-  try {
-    const { data: cardData, error: fetchError } = await supabase
-      .from("cards")
-      .select("points")
-      .eq("id", cardId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!cardData) throw new Error("Card not found");
-
-    const newPoints = cardData.points + pointsToAdd;
-
-    const { data, error } = await supabase
-      .from("cards")
-      .update({ points: newPoints })
-      .eq("id", cardId)
-      .select();
-
-    if (error) throw error;
-
-    const { error: transactionError } = await supabase
-      .from("transactions")
-      .insert({
-        card_id: cardId,
-        points: pointsToAdd,
-        amount: 0,
-        type: "points_addition",
-        status: "Completed",
-      });
-
-    if (transactionError)
-      console.error("Failed to create transaction record:", transactionError);
-
-    return data;
-  } catch (error) {
-    console.error("Error adding points:", error);
-    throw error;
-  }
-};
-
 const onCardDeactivate = async (cardId: string, reason: string, deactivatedBy: string) => {
   try {
     const { data, error } = await supabase.rpc('deactivate_card_with_reason', {
@@ -117,6 +76,9 @@ interface LoyaltyTabProps {
   cards: Card[];
   members: Profile[];
   loading: boolean;
+  onCardRegister: (uid: string, userId: string) => Promise<void>;
+  onCardDeactivate: (cardId: string, reason: string, deactivatedBy: string) => Promise<void>;
+  onCardReload: () => void;
 }
 
 export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {

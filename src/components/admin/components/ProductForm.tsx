@@ -232,7 +232,7 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
       const productData = {
         ...data,
         sizes: hasSizes && !isAddOn ? selectedSizes : [],
-        price: data.base_price, // Maintain backward compatibility
+        price: data.base_price,
       }
 
       if (product) {

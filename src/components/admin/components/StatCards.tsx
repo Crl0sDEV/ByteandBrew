@@ -944,7 +944,7 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
                     label={({ name, percent }) => 
                       `${name}: ${(percent * 100).toFixed(0)}%`}
                   >
-                    {productSalesData.map((entry, index) => (
+                    {productSalesData.map((entry,index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={COLORS[index % COLORS.length]} 

@@ -86,7 +86,7 @@ export function TransactionsTab({
   const handleSubmitTransaction = async (txData: any) => {
     try {
       // Calculate total points from all products
-      const totalPoints = txData.items.reduce((sum, item) => {
+      const totalPoints = txData.items.reduce((sum: number, item: { pointValue: number; quantity: number; }) => {
         return sum + (item.pointValue * item.quantity);
       }, 0);
   
@@ -103,7 +103,7 @@ export function TransactionsTab({
           amount: txData.totalAmount,
           points: totalPoints,
           points_expires_at: pointsExpiresAt, // Add expiration date
-          item_count: txData.items.reduce((sum, item) => sum + item.quantity, 0),
+          item_count: txData.items.reduce((sum: any, item: { quantity: any; }) => sum + item.quantity, 0),
           type: "payment",
           status: "Completed",
           confirmed: true,

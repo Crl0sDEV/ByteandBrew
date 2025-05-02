@@ -71,16 +71,12 @@ export default function CustomerDashboard() {
         <CardStats
           hasCard={customerData.hasCard}
           cardNumber={customerData.cardNumber}
-          balance={customerData.balance}
           points={customerData.points}
           cardStatus={customerData.cardStatus}
-  createdAt={customerData.createdAt}
-          pointsToNextReward={customerData.pointsToNextReward}
+          createdAt={customerData.createdAt}
           expiringPoints={customerData.expiringPoints || 0}
-          cardId={customerData.cardId || ''}
           deactivatedAt={customerData.deactivatedAt}
           deactivationReason={customerData.deactivationReason}
-          onReloadSuccess={() => refetch()} 
         />
 
         {customerData.hasCard ? (
