@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import Header from "@/components/Header copy";
+import { motion } from "framer-motion";
 
 export default function AccountSettingsCustomer() {
   const [email, setEmail] = useState("");
@@ -197,15 +198,20 @@ export default function AccountSettingsCustomer() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col layout-background">
       <Header />
-      <main className="flex-1 p-6 layout-background">
+      <motion.main 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="flex-1 p-6"
+      >
         {/* Center the content */}
         <div className="mx-auto w-full max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Account Information */}
             <div className="space-y-6 h-full">
-              <Card className="h-full">
+              <Card className="h-full border-0 shadow-lg bg-gradient-to-br from-primary/5 to-background">
                 <CardHeader>
                   <CardTitle>Account Information</CardTitle>
                   <CardDescription>Update your account details</CardDescription>
@@ -254,7 +260,7 @@ export default function AccountSettingsCustomer() {
 
             {/* Right Column - Account Security */}
             <div className="space-y-6 h-full">
-              <Card className="h-full">
+              <Card className="h-full border-0 shadow-lg bg-gradient-to-br from-primary/5 to-background">
                 <CardHeader>
                   <CardTitle>Security</CardTitle>
                   <CardDescription>
@@ -483,7 +489,7 @@ export default function AccountSettingsCustomer() {
             </div>
           </div>
         </div>
-      </main>
+      </motion.main>
     </div>
   );
 }

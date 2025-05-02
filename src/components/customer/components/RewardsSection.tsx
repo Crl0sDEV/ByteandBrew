@@ -1,7 +1,7 @@
 import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Gift } from "lucide-react";
+import { Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { Reward } from "../types";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,24 +16,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
-interface RewardsSectionProps {
-  rewards: Reward[];
-  points: number;
-  cardId?: string;
-  onRedeemSuccess: () => void;
-}
+const ITEMS_PER_PAGE = 2;
 
-const ITEMS_PER_PAGE = 5;
-
-export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: RewardsSectionProps) {
+export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: { rewards: Reward[], points: number, cardId?: string, onRedeemSuccess: () => void }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
 
-  // Calculate pagination
   const totalPages = Math.ceil(rewards.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -58,7 +50,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
       setRedeemingId(selectedReward.id);
       setShowConfirmation(false);
       
-      // 1. Get the latest reward data from database
       const { data: rewardCheck, error: checkError } = await supabase
         .from("rewards")
         .select("quantity, points_required")
@@ -70,7 +61,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
       const pointsRequired = rewardCheck.points_required
       const currentQuantity = rewardCheck.quantity;
 
-      // 2. Validate redemption
       if (currentQuantity <= 0 && currentQuantity !== 0) {
         throw new Error("Reward out of stock");
       }
@@ -78,7 +68,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
         throw new Error(`You need ${pointsRequired} points (you have ${points})`);
       }
 
-      // 3. Create redemption record
       const { error: redemptionError } = await supabase
         .from("redemptions")
         .insert({
@@ -90,7 +79,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
 
       if (redemptionError) throw redemptionError;
 
-      // 4. Update card points
       const { error: cardError } = await supabase
         .from("cards")
         .update({ points: points - pointsRequired })
@@ -98,7 +86,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
 
       if (cardError) throw cardError;
 
-      // 5. Update reward quantity if not unlimited
       if (currentQuantity > 0) {
         const { error: rewardError } = await supabase
           .from("rewards")
@@ -120,45 +107,20 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
   };
 
   return (
-    <>
-      <UICard>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <UICard className="border-0 shadow-lg bg-gradient-to-br from-primary/5 to-background">
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle>Available Rewards</CardTitle>
-              <CardDescription className="flex items-center gap-2">
+              <CardDescription className="flex items-center gap-2 mt-2">
                 <span>You have <span className="font-semibold">{points} points</span></span>
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Gift className="h-3 w-3" />
-                  {points} pts
-                </Badge>
               </CardDescription>
             </div>
-            {rewards.length > ITEMS_PER_PAGE && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -171,7 +133,7 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
               return (
                 <div
                   key={reward.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-3"
+                  className="flex flex-col md:flex-row md:items-center justify-between p-2 border rounded-lg hover:bg-primary/5 transition-colors gap-2 bg-background/90"
                 >
                   <div className="flex-1">
                     <div className="font-medium flex items-center gap-2">
@@ -230,29 +192,33 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
             </div>
           )}
 
-          {/* Mobile pagination footer */}
+          {/* Unified Pagination */}
           {rewards.length > ITEMS_PER_PAGE && (
-            <div className="md:hidden flex items-center justify-center gap-4 pt-2">
+            <div className="flex items-center justify-between pt-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={goToPrevPage}
                 disabled={currentPage === 1}
+                className="flex items-center gap-1"
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous</span>
               </Button>
+              
               <div className="text-sm text-muted-foreground">
-                {currentPage}/{totalPages}
+                Page {currentPage} of {totalPages}
               </div>
+              
               <Button
                 variant="outline"
                 size="sm"
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages}
+                className="flex items-center gap-1"
               >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -279,6 +245,6 @@ export function RewardsSection({ rewards, points, cardId, onRedeemSuccess }: Rew
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </motion.div>
   );
 }
