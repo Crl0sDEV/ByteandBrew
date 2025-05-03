@@ -93,5 +93,11 @@ export interface Product {
   temperature?: string;
 }
 
+ export interface SupabaseTransactionResponse {
+  cards: {
+    uid: string;
+    user_id: string;
+  }[];
+}
 // EnhancedTransaction is now redundant as it matches Transaction
 // You can remove it and just use Transaction everywhere

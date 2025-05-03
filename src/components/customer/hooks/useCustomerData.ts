@@ -3,15 +3,23 @@ import { supabase } from "@/lib/supabaseClient";
 import { CustomerData } from "../types";
 import { checkExpiredPoints, getExpiringPoints } from "@/lib/pointsExpiration";
 
+interface FullCustomerData extends CustomerData {
+  cardId?: string;
+  redemptionHistory?: {
+    id: string;
+    rewardId: string;
+    redeemedAt: string | null;
+    status: string;
+    pointsUsed: number;
+  }[];
+  deactivationReason?: string | null;
+  deactivatedAt?: string | null;
+  activatedAt?: string | null;
+}
+
 export function useCustomerData(user: any) {
   const [loading, setLoading] = useState(true);
-  const [customerData, setCustomerData] = useState<CustomerData & { 
-    cardId?: string, 
-    redemptionHistory?: any[],
-    deactivationReason?: string | null,
-    deactivatedAt?: string | null,
-    activatedAt?: string | null
-  }>({
+  const [customerData, setCustomerData] = useState<FullCustomerData>({
     name: "",
     hasCard: false,
     cardNumber: "",
@@ -37,14 +45,16 @@ export function useCustomerData(user: any) {
     setLoading(true);
     try {
       // 1. Fetch profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("full_name, created_at")
         .eq("id", user.id)
         .single();
 
+      if (profileError) throw profileError;
+
       // Initialize default data
-      const defaultData = {
+      const defaultData: FullCustomerData = {
         name: profileData?.full_name || "anonymous",
         hasCard: false,
         cardNumber: "",
@@ -65,11 +75,13 @@ export function useCustomerData(user: any) {
       };
 
       // 2. Try to fetch card
-      const { data: cards } = await supabase
+      const { data: cards, error: cardsError } = await supabase
         .from("cards")
         .select("id, uid, balance, points, status, created_at")
         .eq("user_id", user.id)
         .limit(1);
+
+      if (cardsError) throw cardsError;
 
       const card = cards?.[0];
       if (!card) {
@@ -80,7 +92,7 @@ export function useCustomerData(user: any) {
       // Fetch deactivation info if card is inactive
       let deactivationInfo = null;
       if (card.status?.toLowerCase().trim() !== 'active') {
-        const { data: deactivationData } = await supabase
+        const { data: deactivationData, error: deactivationError } = await supabase
           .from("card_deactivations")
           .select("reason, deactivated_at")
           .eq("card_id", card.id)
@@ -88,13 +100,14 @@ export function useCustomerData(user: any) {
           .limit(1)
           .single();
 
+        if (deactivationError) throw deactivationError;
         deactivationInfo = deactivationData;
       }
 
       // Handle expired points
       try {
         await checkExpiredPoints(card.id);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to check expired points:", error);
       }
 
@@ -105,35 +118,42 @@ export function useCustomerData(user: any) {
         const expiringData = await getExpiringPoints(card.id);
         expiringPoints = expiringData.expiringPoints;
         pointsExpirationDate = expiringData.nextExpirationDate;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to get expiring points:", error);
       }
 
       // 3. Fetch transactions
-      const { data: transactions } = await supabase
+      const { data: transactions, error: transactionsError } = await supabase
         .from("transactions")
         .select("id, amount, item_count, status, type, created_at, points")
         .eq("card_id", card.id)
         .order("created_at", { ascending: false });
 
+      if (transactionsError) throw transactionsError;
+
       // 4. Fetch rewards
-      const { data: rewards } = await supabase
+      const { data: rewards, error: rewardsError } = await supabase
         .from("rewards")
         .select("id, name, description, points_required, quantity")
         .lte("points_required", card.points)
         .eq("is_active", true);
 
+      if (rewardsError) throw rewardsError;
+
       // 5. Fetch redemptions
-      const { data: redemptions } = await supabase
+      const { data: redemptions, error: redemptionsError } = await supabase
         .from("redemptions")
         .select("id, reward_id, redeemed_at, status, points_used")
         .eq("card_id", card.id)
         .order("redeemed_at", { ascending: false });
 
+      if (redemptionsError) throw redemptionsError;
+
       // Normalize card status
       const normalizedCardStatus = card.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive';
 
-      setCustomerData({
+      // Prepare the updated customer data
+      const updatedCustomerData: FullCustomerData = {
         ...defaultData,
         hasCard: true,
         cardNumber: card.uid,
@@ -169,10 +189,12 @@ export function useCustomerData(user: any) {
           redeemedAt: r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : null,
           status: r.status,
           pointsUsed: r.points_used
-        })) || []        
-      });
+        })) || []
+      };
 
-    } catch (error) {
+      setCustomerData(updatedCustomerData);
+
+    } catch (error: unknown) {
       console.error("Error loading customer data:", error);
     } finally {
       setLoading(false);
@@ -185,7 +207,7 @@ export function useCustomerData(user: any) {
 
   useEffect(() => {
     fetchData();
-
+  
     const subscriptions = [
       supabase.channel('card-balance-changes')
         .on(
@@ -206,14 +228,14 @@ export function useCustomerData(user: any) {
                 expiringPoints,
                 pointsExpirationDate: nextExpirationDate,
                 pointsToNextReward: Math.max(0, 1500 - payload.new.points),
-                cardStatus: payload.new.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive' // Update status
+                cardStatus: payload.new.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive'
               }));
-            } catch (error) {
+            } catch (error: unknown) {
               console.error("Error updating card balance:", error);
             }
           }
         ).subscribe(),
-
+  
       supabase.channel('new-transactions')
         .on(
           'postgres_changes',
@@ -226,12 +248,14 @@ export function useCustomerData(user: any) {
           async () => {
             if (customerData.cardId) {
               try {
-                const { data } = await supabase
+                const { data, error } = await supabase
                   .from("transactions")
                   .select("id, amount, item_count, status, type, created_at, points")
                   .eq("card_id", customerData.cardId)
                   .order("created_at", { ascending: false });
-
+  
+                if (error) throw error;
+                
                 if (data) {
                   setCustomerData(prev => ({
                     ...prev,
@@ -246,13 +270,13 @@ export function useCustomerData(user: any) {
                     }))
                   }));
                 }
-              } catch (error) {
+              } catch (error: unknown) {
                 console.error("Error updating transactions:", error);
               }
             }
           }
         ).subscribe(),
-
+  
       supabase.channel('reward-updates')
         .on(
           'postgres_changes',
@@ -262,38 +286,47 @@ export function useCustomerData(user: any) {
             table: 'rewards'
           },
           async () => {
-            if (customerData.cardId) {
-              try {
-                const { data } = await supabase
-                  .from("rewards")
-                  .select("id, name, description, points_required, quantity")
-                  .lte("points_required", customerData.points)
-                  .eq("is_active", true);
+            setCustomerData(prev => {
+              if (!prev.cardId) return prev;
+              
+              const updateRewards = async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from("rewards")
+                    .select("id, name, description, points_required, quantity")
+                    .lte("points_required", prev.points)
+                    .eq("is_active", true);
 
-                if (data) {
-                  setCustomerData(prev => ({
-                    ...prev,
-                    availableRewards: data.map(r => ({
-                      id: r.id,
-                      name: r.name,
-                      description: r.description,
-                      points_required: r.points_required,
-                      quantity: r.quantity
-                    }))
-                  }));
+                  if (error) throw error;
+                  
+                  if (data) {
+                    setCustomerData(current => ({
+                      ...current,
+                      availableRewards: data.map(r => ({
+                        id: r.id,
+                        name: r.name,
+                        description: r.description,
+                        points_required: r.points_required,
+                        quantity: r.quantity
+                      }))
+                    }));
+                  }
+                } catch (error: unknown) {
+                  console.error("Error updating rewards:", error);
                 }
-              } catch (error) {
-                console.error("Error updating rewards:", error);
-              }
-            }
+              };
+
+              updateRewards();
+              return prev;
+            });
           }
         ).subscribe()
     ];
-
+  
     return () => {
       subscriptions.forEach(sub => supabase.removeChannel(sub));
     };
-  }, [fetchData, user, customerData.cardId]);
+  }, [user, customerData.cardId, fetchData]);
 
   return { 
     customerData, 

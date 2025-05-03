@@ -31,9 +31,24 @@ export function useCards(user: User | null, shouldFetch: boolean) {
           )
         `)
         .order("created_at", { ascending: false });
-
+  
       if (error) throw error;
-      setCards(data || []);
+  
+      // Transform the data to match Card interface
+      const formattedCards: Card[] = (data || []).map(card => ({
+        id: card.id,
+        uid: card.uid,
+        balance: card.balance,
+        points: card.points,
+        status: card.status,
+        created_at: card.created_at,
+        user_id: card.user_id,
+        profiles: card.profiles && card.profiles.length > 0 ? { 
+          full_name: card.profiles[0].full_name 
+        } : undefined
+      }));
+  
+      setCards(formattedCards);
     } catch (err) {
       console.error("Error fetching cards:", err);
       setError(err as Error);
@@ -73,7 +88,7 @@ export function useCards(user: User | null, shouldFetch: boolean) {
         .select();
 
       if (error) throw error;
-      if (data) fetchCards(); // Refresh the list
+      if (data) fetchCards();
       return data?.[0];
     } catch (err) {
       console.error("Error registering card:", err);
@@ -90,7 +105,7 @@ export function useCards(user: User | null, shouldFetch: boolean) {
         .select();
 
       if (error) throw error;
-      if (data) fetchCards(); // Refresh the list
+      if (data) fetchCards();
       return data?.[0];
     } catch (err) {
       console.error("Error reloading card:", err);
@@ -107,7 +122,7 @@ export function useCards(user: User | null, shouldFetch: boolean) {
         .select();
 
       if (error) throw error;
-      if (data) fetchCards(); // Refresh the list
+      if (data) fetchCards();
       return data?.[0];
     } catch (err) {
       console.error("Error deactivating card:", err);
