@@ -15,6 +15,7 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Password validation states
   const [passwordErrors, setPasswordErrors] = useState({
@@ -53,85 +54,102 @@ export default function AuthPage() {
     );
   };
 
-  const handleAuth = async () => {
-    setError("");
+  // Common function to handle profile creation/checking
+  const handleUserProfile = async (userId: string, userEmail: string) => {
+    // Check if profile exists
+    const { data: existingProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
 
-    if (isRegister && !isPasswordValid()) {
-      setError("Password does not meet requirements");
-      toast.error("Password does not meet requirements");
-      return;
+    if (profileError) throw profileError;
+
+    // If profile doesn't exist, create one
+    if (!existingProfile) {
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          email: userEmail,
+          role: "customer",
+          full_name: 'anonymous',
+          created_at: new Date().toISOString()
+        });
+
+      if (upsertError) throw upsertError;
+      return "customer";
     }
 
-    if (isRegister) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { role: "customer" },
-        },
-      });
+    return existingProfile.role;
+  };
 
-      if (data.user) {
-        await supabase
-          .from("profiles")
-          .insert([{ id: data.user.id, email, role: "customer" }]);
+  const handleAuth = async () => {
+    setError("");
+    setIsLoading(true);
 
-        toast.success("Registration successful! Please check your email.");
+    try {
+      if (isRegister && !isPasswordValid()) {
+        throw new Error("Password does not meet requirements");
       }
 
-      if (error) {
-        setError(error.message);
-        toast.error(error.message);
-      }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (isRegister) {
+        // Registration flow
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { role: "customer" },
+          },
+        });
 
-      if (error) {
-        setError(error.message);
-        toast.error(error.message);
-        return;
-      }
+        if (error) throw error;
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError) {
-        setError("Failed to fetch user profile.");
-        toast.error("Failed to fetch user profile.");
-        return;
-      }
-
-      toast.success("Login successful!");
-
-      if (profile?.role === "admin") {
-        navigate("/admin");
+        if (data.user) {
+          await handleUserProfile(data.user.id, email);
+          toast.success("Registration successful! Please check your email.");
+        }
       } else {
-        navigate("/customer");
+        // Login flow
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        const userRole = await handleUserProfile(data.user.id, data.user.email!);
+        toast.success("Login successful!");
+        navigate(userRole === "admin" ? "/admin" : "/customer");
       }
+    } catch (error: any) {
+      setError(error.message);
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin + "/auth/callback",
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/auth/callback",
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
         }
-      }
-    });
-  
-    if (error) {
+      });
+
+      if (error) throw error;
+      toast.success("Redirecting to Google...");
+    } catch (error: any) {
       setError(error.message);
       toast.error(error.message);
+      setIsLoading(false);
     }
   };
 
@@ -192,6 +210,7 @@ export default function AuthPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-white/80 focus-visible:ring-2 focus-visible:ring-[#4b8e3f]"
+                  disabled={isLoading}
                 />
               </div>
               
@@ -206,11 +225,13 @@ export default function AuthPage() {
                     value={password}
                     onChange={handlePasswordChange}
                     className="bg-white/80 focus-visible:ring-2 focus-visible:ring-[#4b8e3f] pr-10"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#4b8e3f]"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -288,9 +309,9 @@ export default function AuthPage() {
               <Button 
                 onClick={handleAuth} 
                 className="w-full bg-[#4b8e3f] hover:bg-[#3a6d32]"
-                disabled={isRegister && !isPasswordValid()}
+                disabled={(isRegister && !isPasswordValid()) || isLoading}
               >
-                {isRegister ? "Create Account" : "Sign In"}
+                {isLoading ? "Processing..." : isRegister ? "Create Account" : "Sign In"}
               </Button>
 
               <div className="flex items-center gap-2">
@@ -303,6 +324,7 @@ export default function AuthPage() {
                 onClick={handleGoogleLogin}
                 variant="outline"
                 className="w-full flex items-center justify-center gap-2 border-gray-300 hover:border-[#4b8e3f]"
+                disabled={isLoading}
               >
                 <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
                 Continue with Google
@@ -322,6 +344,7 @@ export default function AuthPage() {
                     });
                   }}
                   className="text-[#4b8e3f] font-medium hover:underline"
+                  disabled={isLoading}
                 >
                   {isRegister ? "Sign In" : "Sign Up"}
                 </button>
