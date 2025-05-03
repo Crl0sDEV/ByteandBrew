@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import AccountSettings from "@/pages/AccountSettings";
 import AccountSettingsCustomer from "./pages/AccountSettingsCustomer";
+import AuthCallback from "@/pages/AuthCallback";
 import { Toaster } from "sonner";
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <Route path="/menu" element={<PublicPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Protected routes */}
           <Route 
