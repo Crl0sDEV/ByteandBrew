@@ -20,6 +20,21 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 
+interface SupabaseRedemptionResponse {
+  id: string;
+  redeemed_at: string;
+  points_used: number;
+  status: string;
+  read: boolean;
+  reward_id: {
+    name: string;
+    points_required: number;
+  } | null;
+  card_id: {
+    uid: string;
+  } | null;
+}
+
 interface Redemption {
   id: string;
   redeemed_at: string;
@@ -132,19 +147,38 @@ export function Header() {
         points_used, 
         status, 
         read,
-        rewards:reward_id (name, points_required),
-        cards:card_id (uid)
+        reward_id (name, points_required),
+        card_id (uid)
       `)
       .order("redeemed_at", { ascending: false });
-
+  
     if (error) {
       console.error("Error fetching redemptions:", error);
       return;
     }
-
+  
     if (data) {
-      setRedemptions(data);
-      const unread = data.filter((r) => !r.read).length;
+      // Type assertion for the raw data
+      const responseData = data as unknown as SupabaseRedemptionResponse[];
+      
+      // Transform to match your Redemption interface
+      const formattedRedemptions: Redemption[] = responseData.map((item) => ({
+        id: item.id,
+        redeemed_at: item.redeemed_at,
+        points_used: item.points_used,
+        status: item.status,
+        read: item.read,
+        rewards: item.reward_id ? {
+          name: item.reward_id.name,
+          points_required: item.reward_id.points_required
+        } : null,
+        cards: item.card_id ? {
+          uid: item.card_id.uid
+        } : null
+      }));
+  
+      setRedemptions(formattedRedemptions);
+      const unread = formattedRedemptions.filter((r) => !r.read).length;
       setUnreadCount(unread);
     }
   };
