@@ -121,65 +121,65 @@ export default function Home() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative w-full h-[90vh] max-h-[800px] overflow-hidden rounded-b-3xl">
-        <motion.img
-          src="/banner.jpg"
-          alt="Byte & Brew Banner"
-          className="absolute inset-0 w-full h-full object-cover"
-          initial={{ scale: 1.1 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 1.2, ease: [0.33, 1, 0.68, 1] }}
-        />
-        
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/30" />
-        
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center text-center px-4"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
+<section className="relative w-full h-[90vh] max-h-[800px] min-h-[500px] overflow-hidden rounded-b-3xl">
+  <motion.img
+    src="/banner.jpg"
+    alt="Byte & Brew Banner"
+    className="absolute inset-0 w-full h-full object-cover"
+    initial={{ scale: 1.1 }}
+    animate={{ scale: 1 }}
+    transition={{ duration: 1.2, ease: [0.33, 1, 0.68, 1] }}
+  />
+  
+  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/30" />
+  
+  <motion.div
+    className="absolute inset-0 flex items-center justify-center text-center px-4"
+    initial="hidden"
+    animate="visible"
+    variants={containerVariants}
+  >
+    <div className="max-w-4xl mx-4">
+      <motion.h1
+        className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 text-white font-serif leading-tight"
+        variants={itemVariants}
+      >
+        Where <span className="text-[#a2c569]">Tech</span> Meets <span className="text-[#a2c569]">Taste</span>
+      </motion.h1>
+      <motion.p
+        className="text-lg sm:text-xl md:text-2xl text-white/90 font-light mb-6 sm:mb-8 mx-auto max-w-xs sm:max-w-md md:max-w-xl"
+        variants={itemVariants}
+      >
+        Your favorite coffee and tech hub in the heart of the city
+      </motion.p>
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+        <Link 
+          to="/menu" 
+          className="bg-[#4b8e3f] hover:bg-[#3a6d32] text-white px-6 py-3 sm:px-8 sm:py-3 rounded-full font-medium transition-all hover:shadow-lg text-sm sm:text-base"
         >
-          <div className="max-w-4xl">
-            <motion.h1
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-white font-serif leading-tight"
-              variants={itemVariants}
-            >
-              Where <span className="text-[#a2c569]">Tech</span> Meets <span className="text-[#a2c569]">Taste</span>
-            </motion.h1>
-            <motion.p
-              className="text-xl md:text-2xl text-white/90 font-light mb-8 max-w-2xl mx-auto"
-              variants={itemVariants}
-            >
-              Your favorite coffee and tech hub in the heart of the city
-            </motion.p>
-            <motion.div variants={itemVariants} className="flex gap-4 justify-center">
-              <Link 
-                to="/menu" 
-                className="bg-[#4b8e3f] hover:bg-[#3a6d32] text-white px-8 py-3 rounded-full font-medium transition-all hover:shadow-lg"
-              >
-                Explore Menu
-              </Link>
-              <Link 
-                to="/about" 
-                className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-full font-medium transition-all hover:bg-white/10"
-              >
-                Our Story
-              </Link>
-            </motion.div>
-          </div>
-        </motion.div>
-        
-        {/* Scrolling indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
+          Explore Menu
+        </Link>
+        <Link 
+          to="/about" 
+          className="bg-transparent border-2 border-white text-white px-6 py-3 sm:px-8 sm:py-3 rounded-full font-medium transition-all hover:bg-white/10 text-sm sm:text-base"
         >
-          <div className="w-8 h-8 border-2 border-white rounded-full flex items-center justify-center">
-            <div className="w-2 h-2 bg-white rounded-full"></div>
-          </div>
-        </motion.div>
-      </section>
+          Our Story
+        </Link>
+      </motion.div>
+    </div>
+  </motion.div>
+  
+  {/* Scrolling indicator */}
+  <motion.div 
+    className="absolute bottom-8 left-1/2 -translate-x-1/2"
+    animate={{ y: [0, 10, 0] }}
+    transition={{ repeat: Infinity, duration: 1.5 }}
+  >
+    <div className="w-6 sm:w-8 h-6 sm:h-8 border-2 border-white rounded-full flex items-center justify-center">
+      <div className="w-2 h-2 bg-white rounded-full"></div>
+    </div>
+  </motion.div>
+</section>
 
       {/* Featured Products Section */}
       <motion.section
