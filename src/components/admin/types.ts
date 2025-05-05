@@ -6,32 +6,6 @@ export interface Profile {
   created_at?: string;
 }
 
-
-export interface BaseCard {
-  id: string;
-  uid: string;
-  user_id: string;
-  balance: number;
-  points: number;
-  status: string;
-  created_at: string;
-}
-
-
-export interface Card extends BaseCard {
-  profiles?: { full_name: string };
-}
-
-
-export interface CardWithProfile extends BaseCard {
-  profiles: Profile | null;
-}
-
-
-export interface SupabaseCardResponse extends BaseCard {
-  profiles: Profile | null;
-}
-
 export interface Card {
   id: string;
   uid: string;

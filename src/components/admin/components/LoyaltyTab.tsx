@@ -504,7 +504,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Card ID</TableHead>
-                <TableHead>Member</TableHead>
                 <TableHead>Points</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Issued</TableHead>
@@ -521,9 +520,6 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
                     onClick={() => setSelectedCard(card)}
                   >
                     <TableCell>{card.uid}</TableCell>
-                    <TableCell>
-                      {card.profiles?.full_name || "No member"}
-                    </TableCell>
                     <TableCell>{card.points}</TableCell>
                     <TableCell>
                       <Badge
