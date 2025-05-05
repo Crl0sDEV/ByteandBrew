@@ -6,6 +6,32 @@ export interface Profile {
   created_at?: string;
 }
 
+
+export interface BaseCard {
+  id: string;
+  uid: string;
+  user_id: string;
+  balance: number;
+  points: number;
+  status: string;
+  created_at: string;
+}
+
+
+export interface Card extends BaseCard {
+  profiles?: { full_name: string };
+}
+
+
+export interface CardWithProfile extends BaseCard {
+  profiles: Profile | null;
+}
+
+
+export interface SupabaseCardResponse extends BaseCard {
+  profiles: Profile | null;
+}
+
 export interface Card {
   id: string;
   uid: string;
@@ -21,7 +47,7 @@ export interface Transaction {
   id: string;
   amount: number;
   points: number;
-  points_expires_at?: string; // Added missing field
+  points_expires_at?: string;
   item_count: number;
   type: string;
   status: string;
@@ -87,7 +113,7 @@ export interface Product {
   created_at: string;
   base_price: number;
   has_sizes: boolean;
-  sizes: string[]; // Changed from object to array of strings
+  sizes: string[];
   category: string;
   is_add_on: boolean;
   temperature?: string;
@@ -99,5 +125,3 @@ export interface Product {
     user_id: string;
   }[];
 }
-// EnhancedTransaction is now redundant as it matches Transaction
-// You can remove it and just use Transaction everywhere

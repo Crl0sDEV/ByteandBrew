@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Card } from '../types';
+import { CardWithProfile, SupabaseCardResponse } from '../types';
 import { User } from '@supabase/supabase-js';
 
 export function useCards(user: User | null, shouldFetch: boolean) {
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<CardWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -25,17 +25,23 @@ export function useCards(user: User | null, shouldFetch: boolean) {
           status,
           created_at,
           user_id,
-          profiles:user_id(
+          profiles:user_id (
+            id,
             full_name,
-            email
+            email,
+            role,
+            created_at
           )
         `)
         .order("created_at", { ascending: false });
   
       if (error) throw error;
   
-      // Transform the data to match Card interface
-      const formattedCards: Card[] = (data || []).map(card => ({
+      // Type assertion for the response data
+      const cardData = data as unknown as SupabaseCardResponse[];
+  
+      // Transform the data to match CardWithProfile interface
+      const formattedCards: CardWithProfile[] = cardData.map(card => ({
         id: card.id,
         uid: card.uid,
         balance: card.balance,
@@ -43,9 +49,7 @@ export function useCards(user: User | null, shouldFetch: boolean) {
         status: card.status,
         created_at: card.created_at,
         user_id: card.user_id,
-        profiles: card.profiles && card.profiles.length > 0 ? { 
-          full_name: card.profiles[0].full_name 
-        } : undefined
+        profiles: card.profiles
       }));
   
       setCards(formattedCards);

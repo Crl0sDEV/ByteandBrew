@@ -140,6 +140,23 @@ export default function Home() {
     variants={containerVariants}
   >
     <div className="max-w-4xl mx-4">
+
+    <motion.div 
+        className="flex justify-center items-center gap-6 mb-6"
+        variants={itemVariants}
+      >
+        <img 
+          src="/logo.png" 
+          alt="Byte & Brew Logo" 
+          className="h-18 w-auto object-contain rounded-full" 
+        />
+        <img 
+          src="/logo2.png" 
+          alt="Partner Logo" 
+          className="h-18 w-auto object-contain rounded-full" 
+        />
+      </motion.div>
+
       <motion.h1
         className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 text-white font-serif leading-tight"
         variants={itemVariants}

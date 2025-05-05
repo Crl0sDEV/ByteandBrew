@@ -202,7 +202,7 @@ export default function AdminDashboard() {
     { value: "members", icon: Users, label: "Members" },
     { value: "loyalty", icon: CreditCard, label: "Loyalty" },
     { value: "rewards", icon: Gift, label: "Rewards" },
-    { value: "products", icon: CoffeeIcon, label: "Products" },
+    { value: "products", icon: CoffeeIcon, label: "Inventory" },
     { value: "settings", icon: Settings, label: "Settings" },
   ];
 
@@ -214,14 +214,29 @@ export default function AdminDashboard() {
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-6 justify-center"
+            className="flex flex-col items-center gap-4 mb-6"
           >
-            <img 
-              src="/logo.png" 
-              alt="Byte & Brew Logo" 
-              className="w-8 h-8 rounded-full object-contain" 
-            />
-            <span className="text-xl font-bold text-gray-800">BYTE & BREW</span>
+            {/* Dual Logo Container */}
+            <div className="flex items-center justify-center gap-4">
+              <img 
+                src="/logo.png" 
+                alt="Byte & Brew Logo" 
+                className="h-14 w-auto object-contain rounded-full" 
+              />
+              <img 
+                src="/logo2.png" 
+                alt="Partner Logo" 
+                className="h-14 w-auto object-contain rounded-full" 
+              />
+            </div>
+            
+            {/* Title with divider */}
+            <div className="w-full text-center">
+              <span className="text-xl font-bold text-gray-800">BYTE & BREW</span>
+              <div className="w-full h-px bg-gray-200 my-2"></div>
+              <p className="text-xs text-gray-500">Partnered with</p>
+              <p className="text-sm font-medium text-gray-700">9BARs coffee</p>
+            </div>
           </motion.div>
           
           <nav className="flex flex-col gap-1">

@@ -46,14 +46,30 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full px-4 sm:px-6 py-4 bg-white shadow flex justify-between items-center">
-      {/* Left: Logo & Name */}
-      <div className="flex items-center space-x-2">
-        <img
-          src="/logo.png"
-          alt="Logo"
-          className="w-8 h-8 rounded-full object-contain"
-        />
-        <span className="text-lg font-bold text-custom">BYTE & BREW</span>
+      {/* Left: Logos & Branding */}
+      <div className="flex items-center">
+        {/* Main logo and name - hidden on mobile */}
+        <div className="flex items-center">
+          <img
+            src="/logo.png"
+            alt="Byte & Brew Logo"
+            className="w-8 h-8 rounded-full object-contain"
+          />
+          <span className="hidden md:inline ml-2 text-lg font-bold text-custom">BYTE & BREW</span>
+        </div>
+        
+        {/* Divider with equal spacing */}
+        <div className="h-8 w-px bg-gray-300 mx-3 md:mx-4"></div>
+        
+        {/* Partner branding - shows name on desktop, only logo on mobile */}
+        <div className="flex items-center">
+          <img
+            src="/logo2.png"
+            alt="9BARs coffee Logo"
+            className="w-8 h-8 rounded-full object-contain"
+          />
+          <span className="hidden md:inline ml-2 text-gray-600 font-medium">9BARs coffee</span>
+        </div>
       </div>
 
       {/* Desktop Navigation (hidden on mobile) */}

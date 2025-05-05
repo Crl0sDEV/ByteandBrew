@@ -6,7 +6,8 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import CustomerDashboard from "@/pages/CustomerDashboard";
 import PublicPage from "@/pages/ProductMenu";
 import HomePage from "@/pages/HomePage";
-import ContactPage from "@/pages/ContactPage"
+import ContactPage from "@/pages/ContactPage";
+import AboutPage from "@/pages/AboutPage"; // Add this import
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import DashboardRedirect from "@/pages/DashboardRedirect";
 import AccountSettings from "@/pages/AccountSettings";
@@ -24,6 +25,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/menu" element={<PublicPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
 

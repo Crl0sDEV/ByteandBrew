@@ -23,9 +23,9 @@ export default function Header() {
         </button>
 
         {/* Center - Brand */}
-        <h1 className="text-xl md:text-2xl font-bold text-custom md:absolute md:left-1/2 md:transform md:-translate-x-1/2">
-          <Link to="/">BYTE & BREW</Link>
-        </h1>
+          <h1 className="text-xl md:text-2xl font-bold text-custom md:absolute md:left-1/2 md:transform md:-translate-x-1/2">
+            <Link to="/">BYTE & BREW</Link>
+          </h1>
 
         {/* Desktop Navigation (Center) */}
         <nav className="hidden md:flex gap-6 text-sm font-medium">
@@ -34,6 +34,9 @@ export default function Header() {
           </Link>
           <Link to="/menu" className="text-muted-foreground hover:text-primary transition-colors">
             Products
+          </Link>
+          <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">
+            About
           </Link>
           <Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">
             Contact
@@ -66,6 +69,13 @@ export default function Header() {
                 onClick={toggleMenu}
               >
                 Products
+              </Link>
+              <Link
+                to="/about"
+                className="text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-md hover:bg-gray-100"
+                onClick={toggleMenu}
+              >
+                About
               </Link>
               <Link
                 to="/contact"
