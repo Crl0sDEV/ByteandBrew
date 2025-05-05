@@ -432,14 +432,14 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
           {/* Switches row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Active Switch */}
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is_active"
-                checked={watch("is_active")}
-                onCheckedChange={(checked) => setValue("is_active", checked)}
-              />
-              <Label htmlFor="is_active">Active</Label>
-            </div>
+<div className="flex items-center space-x-2">
+  <Switch
+    id="is_active"
+    checked={watch("is_active")}
+    onCheckedChange={(checked) => setValue("is_active", checked)}
+  />
+  <Label htmlFor="is_active">Available</Label> {/* Changed from "Active" to "Available" */}
+</div>
             {/* Size Options Section - Hidden for Add-ons */}
             {!isAddOn && (
               <div className="flex items-center space-x-2">

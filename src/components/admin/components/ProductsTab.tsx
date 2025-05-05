@@ -197,7 +197,7 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Products Management</CardTitle>
+              <CardTitle>Inventory Management</CardTitle>
               <CardDescription>Manage your cafe products and menu items</CardDescription>
             </div>
             <Button
@@ -282,10 +282,10 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={product.is_active ? "default" : "destructive"}>
-                          {product.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
+  <Badge variant={product.is_active ? "default" : "destructive"}>
+    {product.is_active ? "Available" : "Unavailable"}
+  </Badge>
+</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                           <Button
