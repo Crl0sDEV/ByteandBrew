@@ -1,95 +1,111 @@
-import { useState, useEffect, useCallback } from "react";
-import { useUser } from "@supabase/auth-helpers-react";
-import { useSearchParams } from "react-router-dom";
-import { Header } from "@/components/Header";
-import AccountSettings from "./AccountSettings";
-import { useAdminStats } from "../components/admin/hooks/useAdminStats";
-import { useMembers } from "../components/admin/hooks/useMembers";
-import { useCards } from "../components/admin/hooks/useCards";
-import { useRewards } from "../components/admin/hooks/useRewards";
-import { useProducts } from "../components/admin/hooks/useProducts";
-import { useTransactions } from "../components/admin/hooks/useTransactions";
-import { StatCards } from "../components/admin/components/StatCards";
-import { TransactionsTab } from "../components/admin/components/TransactionsTab";
-import { MembersTab } from "../components/admin/components/MembersTab";
-import { LoyaltyTab } from "../components/admin/components/LoyaltyTab";
-import { RewardsTab } from "../components/admin/components/RewardsTab";
-import { ProductsTab } from "../components/admin/components/ProductsTab";
-import {
-  ShoppingCart,
-  Users,
-  CreditCard,
-  Gift,
-  Settings,
-  LayoutDashboard,
-  LogOut,
-} from "lucide-react";
-import { CoffeeIcon } from "../components/admin/CoffeeIcon";
-import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/lib/supabaseClient";
-import { motion } from "framer-motion";
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { useUser } from "@supabase/auth-helpers-react"
+import { useSearchParams } from "react-router-dom"
+import { Header } from "@/components/Header"
+import AccountSettings from "./AccountSettings"
+import { useAdminStats } from "../components/admin/hooks/useAdminStats"
+import { useMembers } from "../components/admin/hooks/useMembers"
+import { useCards } from "../components/admin/hooks/useCards"
+import { useRewards } from "../components/admin/hooks/useRewards"
+import { useProducts } from "../components/admin/hooks/useProducts"
+import { useTransactions } from "../components/admin/hooks/useTransactions"
+import { StatCards } from "../components/admin/components/StatCards"
+import { TransactionsTab } from "../components/admin/components/TransactionsTab"
+import { MembersTab } from "../components/admin/components/MembersTab"
+import { LoyaltyTab } from "../components/admin/components/LoyaltyTab"
+import { RewardsTab } from "../components/admin/components/RewardsTab"
+import { ProductsTab } from "../components/admin/components/ProductsTab"
+import { ShoppingCart, Users, CreditCard, Gift, Settings, LayoutDashboard, LogOut } from "lucide-react"
+import { CoffeeIcon } from "../components/admin/CoffeeIcon"
+import { Skeleton } from "@/components/ui/skeleton"
+import { supabase } from "@/lib/supabaseClient"
+import { motion } from "framer-motion"
 
 export default function AdminDashboard() {
-  const user = useUser();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "dashboard";
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const user = useUser()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get("tab") || "dashboard"
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   // Fetch stats
-  const { stats, loading: statsLoading } = useAdminStats(user);
+  const { stats, loading: statsLoading } = useAdminStats(user)
 
   // Fetch members
-  const { members, loading: membersLoading } = useMembers(user, true);
+  const { members, loading: membersLoading } = useMembers(user, true)
 
   // Fetch cards
-  const { cards, loading: cardsLoading } = useCards(user, true);
+  const { cards, loading: cardsLoading } = useCards(user, true)
 
   // Fetch rewards
-  const {
-    rewards,
-    loading: rewardsLoading,
-    createReward,
-    updateReward,
-    deleteReward,
-  } = useRewards(user, true);
+  const { rewards, loading: rewardsLoading, createReward, updateReward, deleteReward } = useRewards(user, true)
 
   // Fetch products
-  const {
-    products,
-    loading: productsLoading,
-    createProduct,
-    updateProduct,
-    deleteProduct,
-  } = useProducts(user, true);
+  const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct } = useProducts(user, true)
 
   // Use the useTransactions hook
-  const { 
-    transactions, 
-    loading: transactionsLoading, 
-    refreshTransactions 
-  } = useTransactions(user, true);
+  const { transactions, loading: transactionsLoading, refreshTransactions } = useTransactions(user, true)
 
   useEffect(() => {
     if (!statsLoading && isInitialLoad) {
-      setIsInitialLoad(false);
+      setIsInitialLoad(false)
     }
-  }, [statsLoading, isInitialLoad]);
+  }, [statsLoading, isInitialLoad])
 
   useEffect(() => {
-    setSearchParams({ tab: activeTab }, { replace: true });
-    localStorage.setItem("adminDashboardTab", activeTab);
-  }, [activeTab, setSearchParams]);
+    setSearchParams({ tab: activeTab }, { replace: true })
+    localStorage.setItem("adminDashboardTab", activeTab)
+  }, [activeTab, setSearchParams])
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-  }, []);
+    setActiveTab(tab)
+  }, [])
+
+  const uploadProductImage = async (file: File): Promise<string> => {
+    try {
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `product-images/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("products").upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const { data } = supabase.storage.from("products").getPublicUrl(filePath)
+
+      return data.publicUrl
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      throw new Error("Failed to upload image")
+    }
+  }
+
+  const deleteProductImage = async (url: string): Promise<void> => {
+    try {
+      // Extract the file path from the URL
+      const storageUrl = supabase.storage.from("products").getPublicUrl("").data.publicUrl
+      const filePath = url.replace(storageUrl, "")
+
+      const { error } = await supabase.storage.from("products").remove([filePath])
+
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error)
+      throw new Error("Failed to delete image")
+    }
+  }
 
   const renderTabContent = useCallback(
     (tab: string) => {
       switch (tab) {
         case "dashboard":
-          return <StatCards stats={stats} />;
+          return <StatCards stats={stats} />
         case "transactions":
           return (
             <TransactionsTab
@@ -99,9 +115,9 @@ export default function AdminDashboard() {
               products={products}
               onTransactionCreated={refreshTransactions}
             />
-          );
+          )
         case "members":
-          return <MembersTab members={members} loading={membersLoading} />;
+          return <MembersTab members={members} loading={membersLoading} />
         case "loyalty":
           return (
             <LoyaltyTab
@@ -112,7 +128,7 @@ export default function AdminDashboard() {
               onCardReload={async () => {}}
               onCardDeactivate={async () => {}}
             />
-          );
+          )
         case "rewards":
           return (
             <RewardsTab
@@ -122,7 +138,7 @@ export default function AdminDashboard() {
               onUpdate={updateReward}
               onDelete={deleteReward}
             />
-          );
+          )
         case "products":
           return (
             <ProductsTab
@@ -131,12 +147,14 @@ export default function AdminDashboard() {
               onCreate={createProduct}
               onUpdate={updateProduct}
               onDelete={deleteProduct}
+              uploadProductImage={uploadProductImage}
+              deleteProductImage={deleteProductImage}
             />
-          );
+          )
         case "settings":
-          return <AccountSettings />;
+          return <AccountSettings />
         default:
-          return <StatCards stats={stats} />;
+          return <StatCards stats={stats} />
       }
     },
     [
@@ -158,8 +176,8 @@ export default function AdminDashboard() {
       updateProduct,
       deleteProduct,
       refreshTransactions,
-    ]
-  );
+    ],
+  )
 
   if (isInitialLoad) {
     return (
@@ -193,7 +211,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   const menuItems = [
@@ -204,32 +222,24 @@ export default function AdminDashboard() {
     { value: "rewards", icon: Gift, label: "Rewards" },
     { value: "products", icon: CoffeeIcon, label: "Inventory" },
     { value: "settings", icon: Settings, label: "Settings" },
-  ];
+  ]
 
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className="fixed top-0 left-0 h-screen w-64 bg-white/95 backdrop-blur-sm border-r border-gray-200 p-4 hidden md:flex flex-col justify-between z-50">
         <div>
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center gap-4 mb-6"
           >
             {/* Dual Logo Container */}
             <div className="flex items-center justify-center gap-4">
-              <img 
-                src="/logo.png" 
-                alt="Byte & Brew Logo" 
-                className="h-14 w-auto object-contain rounded-full" 
-              />
-              <img 
-                src="/logo2.png" 
-                alt="Partner Logo" 
-                className="h-14 w-auto object-contain rounded-full" 
-              />
+              <img src="/logo.png" alt="Byte & Brew Logo" className="h-14 w-auto object-contain rounded-full" />
+              <img src="/logo2.png" alt="Partner Logo" className="h-14 w-auto object-contain rounded-full" />
             </div>
-            
+
             {/* Title with divider */}
             <div className="w-full text-center">
               <span className="text-xl font-bold text-gray-800">BYTE & BREW</span>
@@ -238,7 +248,7 @@ export default function AdminDashboard() {
               <p className="text-sm font-medium text-gray-700">9BARs coffee</p>
             </div>
           </motion.div>
-          
+
           <nav className="flex flex-col gap-1">
             {menuItems.map((item) => (
               <motion.button
@@ -259,19 +269,15 @@ export default function AdminDashboard() {
             ))}
           </nav>
         </div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <button
             onClick={async () => {
-              const { error } = await supabase.auth.signOut();
+              const { error } = await supabase.auth.signOut()
               if (error) {
-                console.error("Logout failed:", error.message);
+                console.error("Logout failed:", error.message)
               } else {
-                window.location.href = "/";
+                window.location.href = "/"
               }
             }}
             className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-600 hover:bg-gray-100/50 hover:text-gray-800 w-full text-left"
@@ -297,5 +303,5 @@ export default function AdminDashboard() {
         </main>
       </div>
     </div>
-  );
+  )
 }

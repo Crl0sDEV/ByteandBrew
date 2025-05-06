@@ -1,12 +1,25 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import {
+  PlusCircle,
+  Pencil,
+  Trash2,
+  ImageIcon,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  ArrowUpDown,
+} from "lucide-react"
+import { toast } from "sonner"
+
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Pencil, Trash2, ImageIcon, Search } from "lucide-react"
-import type { Product } from "../types"
-import { ProductForm } from "./ProductForm"
-import { useState, useEffect } from "react"
-import { Card as UICard, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,9 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +39,21 @@ import {
   PaginationEllipsis,
   PaginationNext,
 } from "@/components/ui/pagination"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+
+import { ProductForm } from "./ProductForm"
+
+
+import type { Product } from "../types"
 
 interface ProductsTabProps {
   products: Product[]
@@ -36,99 +61,134 @@ interface ProductsTabProps {
   onCreate: (product: Omit<Product, "id" | "created_at">) => Promise<void>
   onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
   onDelete: (id: string, image_url: string | null) => Promise<void>
+  uploadProductImage: (file: File) => Promise<string>
+  deleteProductImage: (url: string) => Promise<void>
 }
 
-export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }: ProductsTabProps) {
-  // Initialize state from localStorage or default values
-  const [isFormOpen, setIsFormOpen] = useState(() => {
-    const saved = localStorage.getItem("productFormOpen")
-    return saved ? JSON.parse(saved) : false
-  })
+export function ProductsTab({
+  products,
+  loading,
+  onCreate,
+  onUpdate,
+  onDelete,
+  uploadProductImage,
+  deleteProductImage,
+}: ProductsTabProps) {
+  
+  const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    "name",
+    "image",
+    "category",
+    "price",
+    "points",
+    "sizes",
+    "temperature",
+    "type",
+    "status",
+    "actions",
+  ])
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Product | null
+    direction: "ascending" | "descending"
+  }>({ key: null, direction: "ascending" })
 
-  const [editingProduct, setEditingProduct] = useState<Product | null>(() => {
-    const saved = localStorage.getItem("editingProduct")
-    return saved ? JSON.parse(saved) : null
-  })
+  
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(() => {
-    const saved = localStorage.getItem("deleteDialogOpen")
-    return saved ? JSON.parse(saved) : false
-  })
-
-  const [productToDelete, setProductToDelete] = useState<{ id: string; image_url: string | null } | null>(() => {
-    const saved = localStorage.getItem("productToDelete")
-    return saved ? JSON.parse(saved) : null
-  })
-
+  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<{ id: string; image_url: string | null } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Search and pagination state
-  const [searchTerm, setSearchTerm] = useState(() => {
-    const saved = localStorage.getItem("productSearchTerm")
-    return saved || ""
-  })
-
-  const [currentPage, setCurrentPage] = useState(() => {
-    const saved = localStorage.getItem("productCurrentPage")
-    return saved ? Number.parseInt(saved, 10) : 1
-  })
-
+  
   const itemsPerPage = 10
 
-  // Persist state to localStorage when it changes
+  
   useEffect(() => {
-    localStorage.setItem("productFormOpen", JSON.stringify(isFormOpen))
-  }, [isFormOpen])
-
-  useEffect(() => {
-    localStorage.setItem("editingProduct", JSON.stringify(editingProduct))
-  }, [editingProduct])
-
-  useEffect(() => {
-    localStorage.setItem("deleteDialogOpen", JSON.stringify(deleteDialogOpen))
-  }, [deleteDialogOpen])
-
-  useEffect(() => {
-    localStorage.setItem("productToDelete", JSON.stringify(productToDelete))
-  }, [productToDelete])
-
-  useEffect(() => {
-    localStorage.setItem("productSearchTerm", searchTerm)
+    setCurrentPage(1)
   }, [searchTerm])
 
-  useEffect(() => {
-    localStorage.setItem("productCurrentPage", currentPage.toString())
-  }, [currentPage])
+  
+  const sortedProducts = [...products].sort((a, b) => {
+    if (!sortConfig.key) return 0
 
-  // Handle visibility change to prevent refresh issues
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        // Restore state from localStorage when tab becomes visible again
-        const formOpen = localStorage.getItem("productFormOpen")
-        if (formOpen) setIsFormOpen(JSON.parse(formOpen))
+    
+    const aValue = a[sortConfig.key] ?? null
+    const bValue = b[sortConfig.key] ?? null
 
-        const editing = localStorage.getItem("editingProduct")
-        if (editing) setEditingProduct(JSON.parse(editing))
+    if (aValue === bValue) return 0
 
-        const deleteOpen = localStorage.getItem("deleteDialogOpen")
-        if (deleteOpen) setDeleteDialogOpen(JSON.parse(deleteOpen))
+    const direction = sortConfig.direction === "ascending" ? 1 : -1
 
-        const toDelete = localStorage.getItem("productToDelete")
-        if (toDelete) setProductToDelete(JSON.parse(toDelete))
+    
+    if (aValue === null || aValue === undefined) return 1 * direction
+    if (bValue === null || bValue === undefined) return -1 * direction
 
-        const search = localStorage.getItem("productSearchTerm")
-        if (search) setSearchTerm(search)
-
-        const page = localStorage.getItem("productCurrentPage")
-        if (page) setCurrentPage(Number.parseInt(page, 10))
-      }
+    
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      return aValue.localeCompare(bValue) * direction
     }
 
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [])
+    
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return (aValue - bValue) * direction
+    }
 
+    
+    if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+      return (aValue === bValue ? 0 : aValue ? -1 : 1) * direction
+    }
+
+    
+    return (aValue < bValue ? -1 : 1) * direction
+  })
+
+  
+  const filteredProducts = sortedProducts.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem)
+
+  
+  const requestSort = (key: keyof Product) => {
+    let direction: "ascending" | "descending" = "ascending"
+
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending"
+    }
+
+    setSortConfig({ key, direction })
+  }
+
+  
+  const toggleColumn = (column: string) => {
+    if (visibleColumns.includes(column)) {
+      setVisibleColumns(visibleColumns.filter((col) => col !== column))
+    } else {
+      setVisibleColumns([...visibleColumns, column])
+    }
+  }
+
+  
+  const handleFormOpenChange = (open: boolean) => {
+    setIsFormOpen(open)
+    if (!open) {
+      setEditingProduct(null)
+    }
+  }
+
+  
   const handleDeleteClick = (product: Product) => {
     setProductToDelete({ id: product.id, image_url: product.image_url })
     setDeleteDialogOpen(true)
@@ -141,10 +201,6 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
     try {
       await onDelete(productToDelete.id, productToDelete.image_url)
       toast.success("Product deleted successfully")
-
-      // Clear localStorage for delete dialog
-      localStorage.removeItem("deleteDialogOpen")
-      localStorage.removeItem("productToDelete")
     } catch (error) {
       toast.error("Failed to delete product")
       console.error("Error deleting product:", error)
@@ -155,45 +211,18 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
     }
   }
 
-  // Clear form state when form is closed successfully
-  const handleFormClose = (success: boolean) => {
-    setIsFormOpen(false)
-    if (success) {
-      // Clear localStorage for form
-      localStorage.removeItem("productFormOpen")
-      localStorage.removeItem("editingProduct")
-      setEditingProduct(null)
-    }
-  }
-
-  // Filter products based on search term
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem)
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber)
-
-  // Reset to first page when search term changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
-
+  
   if (loading) {
-    return <div className="flex justify-center p-8">Loading products...</div>
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4">
-      <UICard>
+      <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
@@ -212,102 +241,274 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
           </div>
         </CardHeader>
         <CardContent>
-          {/* Search Bar */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="ml-auto">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("name")}
+                  onCheckedChange={() => toggleColumn("name")}
+                  disabled={true} 
+                >
+                  Name
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("image")}
+                  onCheckedChange={() => toggleColumn("image")}
+                >
+                  Image
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("category")}
+                  onCheckedChange={() => toggleColumn("category")}
+                >
+                  Category
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("price")}
+                  onCheckedChange={() => toggleColumn("price")}
+                >
+                  Price
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("points")}
+                  onCheckedChange={() => toggleColumn("points")}
+                >
+                  Points
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("sizes")}
+                  onCheckedChange={() => toggleColumn("sizes")}
+                >
+                  Sizes
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("temperature")}
+                  onCheckedChange={() => toggleColumn("temperature")}
+                >
+                  Temperature
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("type")}
+                  onCheckedChange={() => toggleColumn("type")}
+                >
+                  Type
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={visibleColumns.includes("status")}
+                  onCheckedChange={() => toggleColumn("status")}
+                >
+                  Status
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  Sort
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => requestSort("name")}>
+                  Name{" "}
+                  {sortConfig.key === "name" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="ml-auto h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ))}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => requestSort("category")}>
+                  Category{" "}
+                  {sortConfig.key === "category" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="ml-auto h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ))}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => requestSort("base_price")}>
+                  Price{" "}
+                  {sortConfig.key === "base_price" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="ml-auto h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ))}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => requestSort("points_value")}>
+                  Points{" "}
+                  {sortConfig.key === "points_value" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="ml-auto h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="ml-auto h-4 w-4" />
+                    ))}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          <div className="rounded-md border">
+          {/* Products Table */}
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Image</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Points</TableHead>
-                  <TableHead>Sizes</TableHead>
-                  <TableHead>Temperature</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {visibleColumns.includes("name") && (
+                    <TableHead className="cursor-pointer" onClick={() => requestSort("name")}>
+                      Name{" "}
+                      {sortConfig.key === "name" &&
+                        (sortConfig.direction === "ascending" ? (
+                          <ChevronUp className="inline h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="inline h-4 w-4" />
+                        ))}
+                    </TableHead>
+                  )}
+                  {visibleColumns.includes("image") && <TableHead>Image</TableHead>}
+                  {visibleColumns.includes("category") && (
+                    <TableHead className="cursor-pointer" onClick={() => requestSort("category")}>
+                      Category{" "}
+                      {sortConfig.key === "category" &&
+                        (sortConfig.direction === "ascending" ? (
+                          <ChevronUp className="inline h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="inline h-4 w-4" />
+                        ))}
+                    </TableHead>
+                  )}
+                  {visibleColumns.includes("price") && (
+                    <TableHead className="cursor-pointer" onClick={() => requestSort("base_price")}>
+                      Price{" "}
+                      {sortConfig.key === "base_price" &&
+                        (sortConfig.direction === "ascending" ? (
+                          <ChevronUp className="inline h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="inline h-4 w-4" />
+                        ))}
+                    </TableHead>
+                  )}
+                  {visibleColumns.includes("points") && (
+                    <TableHead className="cursor-pointer" onClick={() => requestSort("points_value")}>
+                      Points{" "}
+                      {sortConfig.key === "points_value" &&
+                        (sortConfig.direction === "ascending" ? (
+                          <ChevronUp className="inline h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="inline h-4 w-4" />
+                        ))}
+                    </TableHead>
+                  )}
+                  {visibleColumns.includes("sizes") && <TableHead>Sizes</TableHead>}
+                  {visibleColumns.includes("temperature") && <TableHead>Temperature</TableHead>}
+                  {visibleColumns.includes("type") && <TableHead>Type</TableHead>}
+                  {visibleColumns.includes("status") && <TableHead>Status</TableHead>}
+                  {visibleColumns.includes("actions") && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentItems.length > 0 ? (
                   currentItems.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>
-                        {product.image_url ? (
-                          <img
-                            src={product.image_url || "/placeholder.svg"}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                      {visibleColumns.includes("name") && <TableCell className="font-medium">{product.name}</TableCell>}
+                      {visibleColumns.includes("image") && (
+                        <TableCell>
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url || "/placeholder.svg"}
+                              alt={product.name}
+                              className="w-12 h-12 object-cover rounded-md"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("category") && (
+                        <TableCell>
+                          <Badge variant="outline">{product.category}</Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("price") && <TableCell>₱{product.base_price.toFixed(2)}</TableCell>}
+                      {visibleColumns.includes("points") && <TableCell>{product.points_value}</TableCell>}
+                      {visibleColumns.includes("sizes") && (
+                        <TableCell>
+                          {product.has_sizes ? (
+                            <div className="flex flex-wrap gap-1">
+                              {product.sizes?.map((size) => (
+                                <Badge key={size} variant="secondary">
+                                  {size}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("temperature") && <TableCell>{product.temperature}</TableCell>}
+                      {visibleColumns.includes("type") && (
+                        <TableCell>
+                          <Badge variant={product.is_add_on ? "default" : "secondary"}>
+                            {product.is_add_on ? "Add-on" : "Regular"}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("status") && (
+                        <TableCell>
+                          <Badge variant={product.is_active ? "default" : "destructive"}>
+                            {product.is_active ? "Available" : "Unavailable"}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("actions") && (
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProduct(product)
+                                setIsFormOpen(true)
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDeleteClick(product)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.category}</Badge>
-                      </TableCell>
-                      <TableCell>₱{product.base_price.toFixed(2)}</TableCell>
-                      <TableCell>{product.points_value}</TableCell>
-                      <TableCell>
-                        {product.has_sizes ? (
-                          <div className="flex flex-wrap gap-1">
-                            {product.sizes?.map((size) => (
-                              <Badge key={size} variant="secondary">
-                                {size}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{product.temperature}</TableCell>
-                      <TableCell>
-                        <Badge variant={product.is_add_on ? "default" : "secondary"}>
-                          {product.is_add_on ? "Add-on" : "Regular"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-  <Badge variant={product.is_active ? "default" : "destructive"}>
-    {product.is_active ? "Available" : "Unavailable"}
-  </Badge>
-</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingProduct(product)
-                              setIsFormOpen(true)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteClick(product)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center">
+                    <TableCell colSpan={visibleColumns.length} className="text-center">
                       {searchTerm ? "No matching products found" : "No products found"}
                     </TableCell>
                   </TableRow>
@@ -326,14 +527,14 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
                       href="#"
                       onClick={(e) => {
                         e.preventDefault()
-                        if (currentPage > 1) paginate(currentPage - 1)
+                        if (currentPage > 1) setCurrentPage(currentPage - 1)
                       }}
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
 
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    // Show first 3 pages, current page, and last 2 pages
+                    
                     let pageNum
                     if (totalPages <= 5) {
                       pageNum = i + 1
@@ -355,7 +556,7 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
                           href="#"
                           onClick={(e) => {
                             e.preventDefault()
-                            paginate(pageNum)
+                            setCurrentPage(pageNum)
                           }}
                           isActive={currentPage === pageNum}
                         >
@@ -376,7 +577,7 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
                       href="#"
                       onClick={(e) => {
                         e.preventDefault()
-                        if (currentPage < totalPages) paginate(currentPage + 1)
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1)
                       }}
                       className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                     />
@@ -386,7 +587,18 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
             </div>
           )}
         </CardContent>
-      </UICard>
+      </Card>
+
+      {/* Product Form Dialog */}
+      <ProductForm
+        open={isFormOpen}
+        onOpenChange={handleFormOpenChange}
+        product={editingProduct}
+        onCreate={onCreate}
+        onUpdate={onUpdate}
+        uploadProductImage={uploadProductImage}
+        deleteProductImage={deleteProductImage}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -409,25 +621,6 @@ export function ProductsTab({ products, loading, onCreate, onUpdate, onDelete }:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Modified to pass onOpenChange with success status */}
-      <ProductForm
-        open={isFormOpen}
-        onOpenChange={(open) => {
-          if (!open) handleFormClose(false)
-          else setIsFormOpen(open)
-        }}
-        product={editingProduct}
-        onCreate={async (product) => {
-          await onCreate(product)
-          handleFormClose(true)
-        }}
-        onUpdate={async (id, updates) => {
-          await onUpdate(id, updates)
-          handleFormClose(true)
-        }}
-        onDelete={onDelete}
-      />
     </div>
   )
 }

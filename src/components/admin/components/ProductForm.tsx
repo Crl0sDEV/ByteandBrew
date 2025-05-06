@@ -1,44 +1,45 @@
 "use client"
 
 import type React from "react"
+import { useState, useRef, useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { Upload } from "lucide-react"
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useForm } from "react-hook-form"
-import type { Product } from "../types"
 import { Switch } from "@/components/ui/switch"
-import { useState, useRef, useEffect } from "react"
-import { uploadProductImage, deleteProductImage } from "@/lib/uploadImage"
-import { Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 
-interface ProductFormProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  product: Product | null
-  onCreate: (product: Omit<Product, "id" | "created_at">) => Promise<void>
-  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
-  onDelete: (id: string, image_url: string | null) => Promise<void>
-}
 
-// Size options configuration
+import type { Product } from "../types"
+
+
 const SIZE_OPTIONS = [
   { value: "small", label: "S(12oz)", priceModifier: 0 },
   { value: "medium", label: "M(16oz)", priceModifier: 10 },
   { value: "large", label: "L(20oz)", priceModifier: 20 },
 ]
 
-// Temperature options
-const TEMPERATURE_OPTIONS = [
-    { value: "hot", label: "Hot" },
-    { value: "cold", label: "Cold" },
-    { value: "both", label: "Both" },
-    { value: "none", label: "None" },
-  ]
 
-// Category options
+const TEMPERATURE_OPTIONS = [
+  { value: "hot", label: "Hot" },
+  { value: "cold", label: "Cold" },
+  { value: "both", label: "Both" },
+  { value: "none", label: "None" },
+]
+
+
 const CATEGORIES = [
   { value: "coffee", label: "Coffee" },
   { value: "flavored-coffee", label: "Flavored Coffee" },
@@ -50,38 +51,43 @@ const CATEGORIES = [
   { value: "add-ons", label: "Add-ons" },
 ]
 
-export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }: ProductFormProps) {
-  // Initialize state from localStorage or default values
-  const [previewImage, setPreviewImage] = useState<string | null>(() => {
-    if (product?.image_url) return product.image_url
-    const saved = localStorage.getItem("productFormPreviewImage")
-    return saved || null
-  })
+interface ProductFormProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  product: Product | null
+  onCreate: (product: Omit<Product, "id" | "created_at">) => Promise<void>
+  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>
+  uploadProductImage: (file: File) => Promise<string>
+  deleteProductImage: (url: string) => Promise<void>
+}
 
+export function ProductForm({
+  open,
+  onOpenChange,
+  product,
+  onCreate,
+  onUpdate,
+  uploadProductImage,
+  deleteProductImage,
+}: ProductFormProps) {
+  
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
 
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-    if (product?.sizes) return product.sizes
-    const saved = localStorage.getItem("productFormSelectedSizes")
-    return saved ? JSON.parse(saved) : []
-  })
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Get form data from localStorage if available
-  const getDefaultValues = () => {
-    if (product) return product
-
-    const savedFormData = localStorage.getItem("productFormData")
-    if (savedFormData) {
-      try {
-        return JSON.parse(savedFormData)
-      } catch (e) {
-        console.error("Error parsing saved form data:", e)
-      }
-    }
-
-    return {
+  
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<Product>({
+    defaultValues: {
       name: "",
       description: "",
       base_price: 0,
@@ -93,93 +99,13 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
       category: "",
       is_add_on: false,
       temperature: "none",
-    }
-  }
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<Product>({
-    defaultValues: getDefaultValues(),
+    },
   })
 
   const hasSizes = watch("has_sizes")
   const isAddOn = watch("is_add_on")
-  const formValues = watch()
 
-  // Save form data to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem("productFormData", JSON.stringify(formValues))
-  }, [formValues])
-
-  // Save preview image to localStorage
-  useEffect(() => {
-    if (previewImage) {
-      localStorage.setItem("productFormPreviewImage", previewImage)
-    } else {
-      localStorage.removeItem("productFormPreviewImage")
-    }
-  }, [previewImage])
-
-  // Save selected sizes to localStorage
-  useEffect(() => {
-    localStorage.setItem("productFormSelectedSizes", JSON.stringify(selectedSizes))
-  }, [selectedSizes])
-
-  // Handle visibility change to prevent refresh issues
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        // Restore state from localStorage when tab becomes visible again
-        const savedFormData = localStorage.getItem("productFormData")
-        if (savedFormData) {
-          try {
-            const parsedData = JSON.parse(savedFormData)
-            Object.entries(parsedData).forEach(([key, value]) => {
-              setValue(key as any, value)
-            })
-          } catch (e) {
-            console.error("Error restoring form data:", e)
-          }
-        }
-
-        const savedPreviewImage = localStorage.getItem("productFormPreviewImage")
-        if (savedPreviewImage) {
-          setPreviewImage(savedPreviewImage)
-        }
-
-        const savedSizes = localStorage.getItem("productFormSelectedSizes")
-        if (savedSizes) {
-          try {
-            setSelectedSizes(JSON.parse(savedSizes))
-          } catch (e) {
-            console.error("Error restoring selected sizes:", e)
-          }
-        }
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [setValue])
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Clear localStorage when dialog is closed
-      localStorage.removeItem("productFormData")
-      localStorage.removeItem("productFormPreviewImage")
-      localStorage.removeItem("productFormSelectedSizes")
-
-      setPreviewImage(null)
-      setSelectedSizes([])
-    }
-    onOpenChange(open)
-  }
-
+  
   useEffect(() => {
     if (product) {
       reset({
@@ -192,7 +118,6 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
       setPreviewImage(product.image_url || null)
       setSelectedSizes(product.sizes || [])
     } else if (!open) {
-      // Only reset if not open to avoid clearing form when dialog is already open
       reset({
         name: "",
         description: "",
@@ -211,11 +136,29 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
     }
   }, [product, open, reset])
 
-  const toggleSize = (size: string) => {
-    const newSizes = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [...selectedSizes, size]
-
-    setSelectedSizes(newSizes)
-    setValue("sizes", newSizes)
+  
+  const handleDialogOpenChange = (open: boolean) => {
+    onOpenChange(open)
+    if (!open) {
+      
+      if (!product) {
+        reset({
+          name: "",
+          description: "",
+          base_price: 0,
+          points_value: 0,
+          is_active: true,
+          image_url: null,
+          has_sizes: false,
+          sizes: [],
+          category: "",
+          is_add_on: false,
+          temperature: "none",
+        })
+      }
+      setPreviewImage(null)
+      setSelectedSizes([])
+    }
   }
 
   const handleCategoryChange = (value: string) => {
@@ -227,30 +170,10 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
     }
   }
 
-  const onSubmit = async (data: Product) => {
-    try {
-      const productData = {
-        ...data,
-        sizes: hasSizes && !isAddOn ? selectedSizes : [],
-        price: data.base_price,
-      }
-
-      if (product) {
-        await onUpdate(product.id, productData)
-      } else {
-        await onCreate(productData)
-      }
-
-      // Clear localStorage on successful submission
-      localStorage.removeItem("productFormData")
-      localStorage.removeItem("productFormPreviewImage")
-      localStorage.removeItem("productFormSelectedSizes")
-
-      handleOpenChange(false)
-    } catch (error) {
-      console.error("Error saving product:", error)
-      // Keep form open on error
-    }
+  const toggleSize = (size: string) => {
+    const newSizes = selectedSizes.includes(size) ? selectedSizes.filter((s) => s !== size) : [...selectedSizes, size]
+    setSelectedSizes(newSizes)
+    setValue("sizes", newSizes)
   }
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,6 +191,7 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
       setPreviewImage(imageUrl)
     } catch (error) {
       console.error("Error uploading image:", error)
+      toast.error("Failed to upload image")
     } finally {
       setIsUploading(false)
     }
@@ -275,17 +199,46 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
 
   const removeImage = async () => {
     if (previewImage) {
-      await deleteProductImage(previewImage)
+      try {
+        await deleteProductImage(previewImage)
+        setPreviewImage(null)
+        setValue("image_url", null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
+      } catch (error) {
+        console.error("Error removing image:", error)
+        toast.error("Failed to remove image")
+      }
     }
-    setPreviewImage(null)
-    setValue("image_url", null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+  }
+
+  
+  const onSubmit = async (data: Product) => {
+    try {
+      const productData = {
+        ...data,
+        sizes: hasSizes && !isAddOn ? selectedSizes : [],
+        price: data.base_price,
+      }
+
+      if (product) {
+        await onUpdate(product.id, productData)
+        toast.success("Product updated successfully")
+      } else {
+        await onCreate(productData)
+        toast.success("Product created successfully")
+      }
+
+      handleDialogOpenChange(false)
+    } catch (error) {
+      console.error("Error saving product:", error)
+      toast.error("Failed to save product")
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
@@ -350,42 +303,45 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
             {/* Right side - Category, Price, Points */}
             <div className="w-full md:w-1/2 space-y-4">
               {/* Category and Temperature */}
-<div className="flex flex-col md:flex-row gap-1">
-  {/* Category */}
-  <div className="flex-1 space-y-2">
-    <Label htmlFor="category">Category</Label>
-    <Select value={watch("category")} onValueChange={handleCategoryChange}>
-      <SelectTrigger>
-        <SelectValue placeholder="Select category" />
-      </SelectTrigger>
-      <SelectContent>
-        {CATEGORIES.map((category) => (
-          <SelectItem key={category.value} value={category.value}>
-            {category.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-    {errors.category && <p className="text-sm text-red-500">{errors.category.message}</p>}
-  </div>
+              <div className="flex flex-col md:flex-row gap-1">
+                {/* Category */}
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={watch("category")} onValueChange={handleCategoryChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category && <p className="text-sm text-red-500">{errors.category.message}</p>}
+                </div>
 
-  {/* Temperature */}
-  <div className="flex-1 space-y-2">
-    <Label htmlFor="temperature">Temperature</Label>
-    <Select value={watch("temperature") || "none"} onValueChange={(value) => setValue("temperature", value)}>
-      <SelectTrigger>
-        <SelectValue placeholder="Select temperature" />
-      </SelectTrigger>
-      <SelectContent>
-        {TEMPERATURE_OPTIONS.map((temp) => (
-          <SelectItem key={temp.value} value={temp.value}>
-            {temp.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-</div>
+                {/* Temperature */}
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="temperature">Temperature</Label>
+                  <Select
+                    value={watch("temperature") || "none"}
+                    onValueChange={(value) => setValue("temperature", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select temperature" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TEMPERATURE_OPTIONS.map((temp) => (
+                        <SelectItem key={temp.value} value={temp.value}>
+                          {temp.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               {/* Base Price */}
               <div className="space-y-2">
@@ -432,14 +388,14 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
           {/* Switches row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Active Switch */}
-<div className="flex items-center space-x-2">
-  <Switch
-    id="is_active"
-    checked={watch("is_active")}
-    onCheckedChange={(checked) => setValue("is_active", checked)}
-  />
-  <Label htmlFor="is_active">Available</Label> {/* Changed from "Active" to "Available" */}
-</div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_active"
+                checked={watch("is_active")}
+                onCheckedChange={(checked) => setValue("is_active", checked)}
+              />
+              <Label htmlFor="is_active">Available</Label>
+            </div>
             {/* Size Options Section - Hidden for Add-ons */}
             {!isAddOn && (
               <div className="flex items-center space-x-2">
@@ -481,14 +437,14 @@ export function ProductForm({ open, onOpenChange, product, onCreate, onUpdate }:
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => handleDialogOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={(!isAddOn && hasSizes && selectedSizes.length === 0) || !watch("category")}>
               {product ? "Update Product" : "Add Product"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
