@@ -243,62 +243,69 @@ export default function AuthPage() {
               </div>
 
               {isRegister && (
-                <div className="space-y-2 text-sm bg-white/80 p-4 rounded-lg">
-                  <p className="font-medium text-gray-700">Password Requirements:</p>
-                  <ul className="space-y-1">
-                    <li className="flex items-center">
-                      {passwordErrors.length ? (
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ) : (
-                        <X className="w-4 h-4 text-red-500 mr-2" />
-                      )}
-                      <span className={passwordErrors.length ? "text-gray-700" : "text-gray-500"}>
-                        At least 8 characters
-                      </span>
-                    </li>
-                    <li className="flex items-center">
-                      {passwordErrors.uppercase ? (
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ) : (
-                        <X className="w-4 h-4 text-red-500 mr-2" />
-                      )}
-                      <span className={passwordErrors.uppercase ? "text-gray-700" : "text-gray-500"}>
-                        At least one uppercase letter
-                      </span>
-                    </li>
-                    <li className="flex items-center">
-                      {passwordErrors.lowercase ? (
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ) : (
-                        <X className="w-4 h-4 text-red-500 mr-2" />
-                      )}
-                      <span className={passwordErrors.lowercase ? "text-gray-700" : "text-gray-500"}>
-                        At least one lowercase letter
-                      </span>
-                    </li>
-                    <li className="flex items-center">
-                      {passwordErrors.number ? (
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ) : (
-                        <X className="w-4 h-4 text-red-500 mr-2" />
-                      )}
-                      <span className={passwordErrors.number ? "text-gray-700" : "text-gray-500"}>
-                        At least one number
-                      </span>
-                    </li>
-                    <li className="flex items-center">
-                      {passwordErrors.specialChar ? (
-                        <Check className="w-4 h-4 text-green-500 mr-2" />
-                      ) : (
-                        <X className="w-4 h-4 text-red-500 mr-2" />
-                      )}
-                      <span className={passwordErrors.specialChar ? "text-gray-700" : "text-gray-500"}>
-                        At least one special character
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              )}
+  <div className="grid grid-cols-2 gap-4 text-sm bg-white/80 p-4 rounded-lg">
+    <div className="space-y-2">
+      <p className="font-medium text-gray-700">Password Requirements:</p>
+      <ul className="space-y-1">
+        <li className="flex items-center">
+          {passwordErrors.length ? (
+            <Check className="w-4 h-4 text-green-500 mr-2" />
+          ) : (
+            <X className="w-4 h-4 text-red-500 mr-2" />
+          )}
+          <span className={passwordErrors.length ? "text-gray-700" : "text-gray-500"}>
+            At least 8 characters
+          </span>
+        </li>
+        <li className="flex items-center">
+          {passwordErrors.uppercase ? (
+            <Check className="w-4 h-4 text-green-500 mr-2" />
+          ) : (
+            <X className="w-4 h-4 text-red-500 mr-2" />
+          )}
+          <span className={passwordErrors.uppercase ? "text-gray-700" : "text-gray-500"}>
+            One uppercase letter
+          </span>
+        </li>
+        <li className="flex items-center">
+          {passwordErrors.lowercase ? (
+            <Check className="w-4 h-4 text-green-500 mr-2" />
+          ) : (
+            <X className="w-4 h-4 text-red-500 mr-2" />
+          )}
+          <span className={passwordErrors.lowercase ? "text-gray-700" : "text-gray-500"}>
+            One lowercase letter
+          </span>
+        </li>
+      </ul>
+    </div>
+    <div className="space-y-2">
+      <p className="font-medium text-gray-700 opacity-0">Requirements</p>
+      <ul className="space-y-1">
+        <li className="flex items-center">
+          {passwordErrors.number ? (
+            <Check className="w-4 h-4 text-green-500 mr-2" />
+          ) : (
+            <X className="w-4 h-4 text-red-500 mr-2" />
+          )}
+          <span className={passwordErrors.number ? "text-gray-700" : "text-gray-500"}>
+            One number
+          </span>
+        </li>
+        <li className="flex items-center">
+          {passwordErrors.specialChar ? (
+            <Check className="w-4 h-4 text-green-500 mr-2" />
+          ) : (
+            <X className="w-4 h-4 text-red-500 mr-2" />
+          )}
+          <span className={passwordErrors.specialChar ? "text-gray-700" : "text-gray-500"}>
+            One special character
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+)}
 
               {error && (
                 <div className="text-red-500 text-sm bg-red-50 p-2 rounded-md">
