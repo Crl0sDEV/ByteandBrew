@@ -37,6 +37,7 @@ export default function AccountSettings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   // Password validation states
   const [passwordErrors, setPasswordErrors] = useState({
@@ -86,11 +87,12 @@ export default function AccountSettings() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
+          setUser(user); // Set the user state
           setEmail(user.email ?? "");
 
           const { data: profile, error } = await supabase
             .from("profiles")
-            .select("full_name, role") 
+            .select("full_name, role")
             .eq("id", user.id)
             .single();
 
@@ -98,7 +100,7 @@ export default function AccountSettings() {
             setFullName(profile.full_name || "");
           }
         }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         toast.error("Failed to load user data");
       } finally {
@@ -136,7 +138,7 @@ export default function AccountSettings() {
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: user.id,
         full_name: fullName,
-        role: currentProfile?.role || 'customer',
+        role: currentProfile?.role || "customer",
         updated_at: new Date().toISOString(),
       });
 
@@ -254,206 +256,235 @@ export default function AccountSettings() {
             <CardHeader>
               <CardTitle>Security</CardTitle>
               <CardDescription>
-                Change your password and security settings
+                {user?.app_metadata?.provider === "google"
+                  ? "Google account security settings"
+                  : "Change your password and security settings"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <AlertDialog
-                  open={openPasswordDialog}
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setCurrentPassword("");
-                      setNewPassword("");
-                      setConfirmPassword("");
-                      setPasswordErrors({
-                        length: false,
-                        uppercase: false,
-                        lowercase: false,
-                        number: false,
-                        specialChar: false,
-                        match: false,
-                      });
-                    }
-                    setOpenPasswordDialog(open);
-                  }}
-                >
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      Change Password
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Change Password</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Enter your current password and set a new one.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
+                {user?.app_metadata?.provider === "google" ? (
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <p className="text-sm text-muted-foreground">
+                      You signed in with Google. Password management is handled
+                      by your Google account. To change your password, please
+                      update it through your Google account settings.
+                    </p>
+                  </div>
+                ) : (
+                  <AlertDialog
+                    open={openPasswordDialog}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                        setPasswordErrors({
+                          length: false,
+                          uppercase: false,
+                          lowercase: false,
+                          number: false,
+                          specialChar: false,
+                          match: false,
+                        });
+                      }
+                      setOpenPasswordDialog(open);
+                    }}
+                  >
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        Change Password
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Change Password</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Enter your current password and set a new one.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
 
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPassword">Current Password</Label>
-                        <div className="relative">
-                          <Input
-                            id="currentPassword"
-                            type={showCurrentPassword ? "text" : "password"}
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            placeholder="Enter current password"
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          >
-                            {showCurrentPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">
+                            Current Password
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="currentPassword"
+                              type={showCurrentPassword ? "text" : "password"}
+                              value={currentPassword}
+                              onChange={(e) =>
+                                setCurrentPassword(e.target.value)
+                              }
+                              placeholder="Enter current password"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
+                              onClick={() =>
+                                setShowCurrentPassword(!showCurrentPassword)
+                              }
+                            >
+                              {showCurrentPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword">New Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="newPassword"
+                              type={showNewPassword ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => {
+                                setNewPassword(e.target.value);
+                                validatePassword(e.target.value);
+                              }}
+                              placeholder="Enter new password"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
+                              onClick={() =>
+                                setShowNewPassword(!showNewPassword)
+                              }
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">
+                            Confirm New Password
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="confirmPassword"
+                              type={showConfirmPassword ? "text" : "password"}
+                              value={confirmPassword}
+                              onChange={(e) => {
+                                setConfirmPassword(e.target.value);
+                                validateConfirmPassword(e.target.value);
+                              }}
+                              placeholder="Confirm new password"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
+                              onClick={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                              }
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Password Requirements */}
+                        <div className="space-y-2 text-sm">
+                          <p className="font-medium">Password Requirements:</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                            {/* Left Column */}
+                            <div className="space-y-1">
+                              <li className="flex items-center">
+                                {passwordErrors.length ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                At least 8 characters
+                              </li>
+                              <li className="flex items-center">
+                                {passwordErrors.uppercase ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                At least one uppercase letter
+                              </li>
+                              <li className="flex items-center">
+                                {passwordErrors.lowercase ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                At least one lowercase letter
+                              </li>
+                            </div>
+
+                            {/* Right Column */}
+                            <div className="space-y-1">
+                              <li className="flex items-center">
+                                {passwordErrors.number ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                At least one number
+                              </li>
+                              <li className="flex items-center">
+                                {passwordErrors.specialChar ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                At least one special character
+                              </li>
+                              <li className="flex items-center">
+                                {passwordErrors.match ? (
+                                  <Check className="w-4 h-4 text-green-500 mr-2" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500 mr-2" />
+                                )}
+                                Passwords match
+                              </li>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <div className="relative">
-                          <Input
-                            id="newPassword"
-                            type={showNewPassword ? "text" : "password"}
-                            value={newPassword}
-                            onChange={(e) => {
-                              setNewPassword(e.target.value);
-                              validatePassword(e.target.value);
-                            }}
-                            placeholder="Enter new password"
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                          >
-                            {showNewPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">
-                          Confirm New Password
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="confirmPassword"
-                            type={showConfirmPassword ? "text" : "password"}
-                            value={confirmPassword}
-                            onChange={(e) => {
-                              setConfirmPassword(e.target.value);
-                              validateConfirmPassword(e.target.value);
-                            }}
-                            placeholder="Confirm new password"
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-2.5 text-muted-foreground hover:text-primary"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          >
-                            {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Password Requirements */}
-                      <div className="space-y-2 text-sm">
-                        <p className="font-medium">Password Requirements:</p>
-                        <ul className="space-y-1">
-                          <li className="flex items-center">
-                            {passwordErrors.length ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            At least 8 characters
-                          </li>
-                          <li className="flex items-center">
-                            {passwordErrors.uppercase ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            At least one uppercase letter
-                          </li>
-                          <li className="flex items-center">
-                            {passwordErrors.lowercase ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            At least one lowercase letter
-                          </li>
-                          <li className="flex items-center">
-                            {passwordErrors.number ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            At least one number
-                          </li>
-                          <li className="flex items-center">
-                            {passwordErrors.specialChar ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            At least one special character
-                          </li>
-                          <li className="flex items-center">
-                            {passwordErrors.match ? (
-                              <Check className="w-4 h-4 text-green-500 mr-2" />
-                            ) : (
-                              <X className="w-4 h-4 text-red-500 mr-2" />
-                            )}
-                            Passwords match
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isPasswordLoading}>
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handlePasswordChange}
-                        disabled={
-                          isPasswordLoading ||
-                          !currentPassword ||
-                          !newPassword ||
-                          !confirmPassword ||
-                          !isPasswordValid()
-                        }
-                      >
-                        {isPasswordLoading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          "Change Password"
-                        )}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isPasswordLoading}>
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handlePasswordChange}
+                          disabled={
+                            isPasswordLoading ||
+                            !currentPassword ||
+                            !newPassword ||
+                            !confirmPassword ||
+                            !isPasswordValid()
+                          }
+                        >
+                          {isPasswordLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            "Change Password"
+                          )}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </CardContent>
           </Card>
