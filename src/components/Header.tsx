@@ -158,10 +158,10 @@ export function Header() {
     }
   
     if (data) {
-      // Type assertion for the raw data
+      
       const responseData = data as unknown as SupabaseRedemptionResponse[];
       
-      // Transform to match your Redemption interface
+      
       const formattedRedemptions: Redemption[] = responseData.map((item) => ({
         id: item.id,
         redeemed_at: item.redeemed_at,

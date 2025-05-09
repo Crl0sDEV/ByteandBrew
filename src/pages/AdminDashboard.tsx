@@ -30,22 +30,22 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState(initialTab)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
 
-  // Fetch stats
+  
   const { stats, loading: statsLoading } = useAdminStats(user)
 
-  // Fetch members
+  
   const { members, loading: membersLoading } = useMembers(user, true)
 
-  // Fetch cards
+  
   const { cards, loading: cardsLoading } = useCards(user, true)
 
-  // Fetch rewards
+  
   const { rewards, loading: rewardsLoading, createReward, updateReward, deleteReward } = useRewards(user, true)
 
-  // Fetch products
+  
   const { products, loading: productsLoading, createProduct, updateProduct, deleteProduct } = useProducts(user, true)
 
-  // Use the useTransactions hook
+  
   const { transactions, loading: transactionsLoading, refreshTransactions } = useTransactions(user, true)
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
 
   const deleteProductImage = async (url: string): Promise<void> => {
     try {
-      // Extract the file path from the URL
+      
       const storageUrl = supabase.storage.from("products").getPublicUrl("").data.publicUrl
       const filePath = url.replace(storageUrl, "")
 
