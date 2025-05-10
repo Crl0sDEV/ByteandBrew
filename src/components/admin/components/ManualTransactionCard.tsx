@@ -22,7 +22,6 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 
-// Match the size options from ProductForm
 const SIZE_OPTIONS = [
   { value: "small", label: "S(12oz)", priceModifier: 0 },
   { value: "medium", label: "M(16oz)", priceModifier: 10 },
@@ -196,7 +195,7 @@ const hasSizesSelected = selectedProductIds.some((id) => {
     return product?.has_sizes;
 });
 
-// Get available sizes from selected products
+
 const availableSizes = SIZE_OPTIONS.filter(option => {
     return selectedProductIds.some(id => {
         const product = products.find(p => p.id === id);
