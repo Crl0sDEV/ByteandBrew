@@ -80,29 +80,29 @@ export function TransactionsTab({
   }, [statusFilter, transactions]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   }, [statusFilter]);
 
   const handleSubmitTransaction = async (txData: any) => {
     try {
-      // Calculate total points from all products
+      
       const totalPoints = txData.items.reduce((sum: number, item: { pointValue: number; quantity: number; }) => {
         return sum + (item.pointValue * item.quantity);
       }, 0);
   
-      // Calculate expiration date (15 days from now) if points are being earned
+      
       const pointsExpiresAt = totalPoints > 0 
         ? new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
         : null;
   
-      // Create the transaction record first
+      
       const { data: transactionData, error: txError } = await supabase
         .from("transactions")
         .insert({
           card_id: txData.cardId,
           amount: txData.totalAmount,
           points: totalPoints,
-          points_expires_at: pointsExpiresAt, // Add expiration date
+          points_expires_at: pointsExpiresAt, 
           item_count: txData.items.reduce((sum: any, item: { quantity: any; }) => sum + item.quantity, 0),
           type: "payment",
           status: "Completed",
@@ -114,7 +114,7 @@ export function TransactionsTab({
       if (txError) throw txError;
       if (!transactionData) throw new Error("Transaction not created");
   
-      // Create transaction items for each product
+      
       const { error: itemsError } = await supabase
         .from("transaction_items")
         .insert(
@@ -133,7 +133,7 @@ export function TransactionsTab({
   
       if (itemsError) throw itemsError;
   
-      // Update card points if there are points to add
+      
       if (totalPoints > 0) {
         const { data: cardData, error: fetchError } = await supabase
           .from("cards")
@@ -161,7 +161,7 @@ export function TransactionsTab({
           : "Transaction recorded!"
       );
       
-      // Refresh transactions
+      
       onTransactionCreated();
     } catch (err) {
       console.error("Transaction error:", err);
