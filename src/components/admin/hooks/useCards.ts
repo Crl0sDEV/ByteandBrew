@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { Card } from '../types';
-import { User } from '@supabase/supabase-js';
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Card } from "../types";
+import { User } from "@supabase/supabase-js";
 
 export function useCards(user: User | null, shouldFetch: boolean) {
   const [cards, setCards] = useState<Card[]>([]);
@@ -10,14 +10,15 @@ export function useCards(user: User | null, shouldFetch: boolean) {
 
   const fetchCards = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase
         .from("cards")
-        .select(`
+        .select(
+          `
           id,
           uid,
           balance,
@@ -29,13 +30,13 @@ export function useCards(user: User | null, shouldFetch: boolean) {
             full_name,
             email
           )
-        `)
+        `
+        )
         .order("created_at", { ascending: false });
-  
+
       if (error) throw error;
-  
-      // Transform the data to match Card interface
-      const formattedCards: Card[] = (data || []).map(card => ({
+
+      const formattedCards: Card[] = (data || []).map((card) => ({
         id: card.id,
         uid: card.uid,
         balance: card.balance,
@@ -43,11 +44,14 @@ export function useCards(user: User | null, shouldFetch: boolean) {
         status: card.status,
         created_at: card.created_at,
         user_id: card.user_id,
-        profiles: card.profiles && card.profiles.length > 0 ? { 
-          full_name: card.profiles[0].full_name 
-        } : undefined
+        profiles:
+          card.profiles && card.profiles.length > 0
+            ? {
+                full_name: card.profiles[0].full_name,
+              }
+            : undefined,
       }));
-  
+
       setCards(formattedCards);
     } catch (err) {
       console.error("Error fetching cards:", err);
@@ -63,13 +67,13 @@ export function useCards(user: User | null, shouldFetch: boolean) {
     fetchCards();
 
     const subscription = supabase
-      .channel('cards-changes')
+      .channel("cards-changes")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'cards'
+          event: "*",
+          schema: "public",
+          table: "cards",
         },
         () => shouldFetch && fetchCards()
       )
@@ -80,63 +84,72 @@ export function useCards(user: User | null, shouldFetch: boolean) {
     };
   }, [shouldFetch, fetchCards]);
 
-  const registerCard = useCallback(async (uid: string, userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('cards')
-        .insert([{ uid, user_id: userId, status: 'active' }])
-        .select();
+  const registerCard = useCallback(
+    async (uid: string, userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("cards")
+          .insert([{ uid, user_id: userId, status: "active" }])
+          .select();
 
-      if (error) throw error;
-      if (data) fetchCards();
-      return data?.[0];
-    } catch (err) {
-      console.error("Error registering card:", err);
-      throw err;
-    }
-  }, [fetchCards]);
+        if (error) throw error;
+        if (data) fetchCards();
+        return data?.[0];
+      } catch (err) {
+        console.error("Error registering card:", err);
+        throw err;
+      }
+    },
+    [fetchCards]
+  );
 
-  const reloadCard = useCallback(async (cardId: string, amount: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('cards')
-        .update({ balance: amount })
-        .eq('id', cardId)
-        .select();
+  const reloadCard = useCallback(
+    async (cardId: string, amount: number) => {
+      try {
+        const { data, error } = await supabase
+          .from("cards")
+          .update({ balance: amount })
+          .eq("id", cardId)
+          .select();
 
-      if (error) throw error;
-      if (data) fetchCards();
-      return data?.[0];
-    } catch (err) {
-      console.error("Error reloading card:", err);
-      throw err;
-    }
-  }, [fetchCards]);
+        if (error) throw error;
+        if (data) fetchCards();
+        return data?.[0];
+      } catch (err) {
+        console.error("Error reloading card:", err);
+        throw err;
+      }
+    },
+    [fetchCards]
+  );
 
-  const deactivateCard = useCallback(async (cardId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('cards')
-        .update({ status: 'inactive' })
-        .eq('id', cardId)
-        .select();
+  const deactivateCard = useCallback(
+    async (cardId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("cards")
+          .update({ status: "inactive" })
+          .eq("id", cardId)
+          .select();
 
-      if (error) throw error;
-      if (data) fetchCards();
-      return data?.[0];
-    } catch (err) {
-      console.error("Error deactivating card:", err);
-      throw err;
-    }
-  }, [fetchCards]);
+        if (error) throw error;
+        if (data) fetchCards();
+        return data?.[0];
+      } catch (err) {
+        console.error("Error deactivating card:", err);
+        throw err;
+      }
+    },
+    [fetchCards]
+  );
 
-  return { 
-    cards, 
-    loading, 
+  return {
+    cards,
+    loading,
     error,
     registerCard,
-    reloadCard, 
+    reloadCard,
     deactivateCard,
-    refreshCards: fetchCards 
+    refreshCards: fetchCards,
   };
 }
