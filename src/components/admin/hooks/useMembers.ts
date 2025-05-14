@@ -15,7 +15,7 @@ export function useMembers(user: User | null, shouldFetch: boolean) {
       setLoading(true);
       setError(null);
       
-      // Fetch profiles
+      
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name, email, created_at")
@@ -28,7 +28,7 @@ export function useMembers(user: User | null, shouldFetch: boolean) {
         return;
       }
 
-      // Fetch cards for these members
+      
       const userIds = profilesData.map(p => p.id);
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
@@ -37,7 +37,7 @@ export function useMembers(user: User | null, shouldFetch: boolean) {
 
       if (cardsError) throw cardsError;
 
-      // Combine profile and card data
+      
       const membersWithCards = profilesData.map(profile => ({
         ...profile,
         card: cardsData?.find(c => c.user_id === profile.id) || null
@@ -57,7 +57,7 @@ export function useMembers(user: User | null, shouldFetch: boolean) {
 
     fetchMembers();
 
-    // Set up real-time updates for both profiles and cards
+    
     const profilesSubscription = supabase
       .channel('profiles-changes')
       .on(
