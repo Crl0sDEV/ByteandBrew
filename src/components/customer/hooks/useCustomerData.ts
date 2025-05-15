@@ -44,7 +44,7 @@ export function useCustomerData(user: any) {
     
     setLoading(true);
     try {
-      // 1. Fetch profile
+      
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("full_name, created_at")
@@ -53,7 +53,7 @@ export function useCustomerData(user: any) {
 
       if (profileError) throw profileError;
 
-      // Initialize default data
+      
       const defaultData: FullCustomerData = {
         name: profileData?.full_name || "anonymous",
         hasCard: false,
@@ -74,7 +74,7 @@ export function useCustomerData(user: any) {
         activatedAt: null
       };
 
-      // 2. Try to fetch card
+      
       const { data: cards, error: cardsError } = await supabase
         .from("cards")
         .select("id, uid, balance, points, status, created_at")
@@ -89,7 +89,7 @@ export function useCustomerData(user: any) {
         return;
       }
 
-      // Fetch deactivation info if card is inactive
+      
       let deactivationInfo = null;
       if (card.status?.toLowerCase().trim() !== 'active') {
         const { data: deactivationData, error: deactivationError } = await supabase
@@ -104,14 +104,14 @@ export function useCustomerData(user: any) {
         deactivationInfo = deactivationData;
       }
 
-      // Handle expired points
+      
       try {
         await checkExpiredPoints(card.id);
       } catch (error: unknown) {
         console.error("Failed to check expired points:", error);
       }
 
-      // Get expiring points data
+      
       let expiringPoints = 0;
       let pointsExpirationDate = null;
       try {
@@ -122,7 +122,7 @@ export function useCustomerData(user: any) {
         console.error("Failed to get expiring points:", error);
       }
 
-      // 3. Fetch transactions
+      
       const { data: transactions, error: transactionsError } = await supabase
         .from("transactions")
         .select("id, amount, item_count, status, type, created_at, points")
@@ -131,7 +131,7 @@ export function useCustomerData(user: any) {
 
       if (transactionsError) throw transactionsError;
 
-      // 4. Fetch rewards
+      
       const { data: rewards, error: rewardsError } = await supabase
         .from("rewards")
         .select("id, name, description, points_required, quantity")
@@ -140,7 +140,7 @@ export function useCustomerData(user: any) {
 
       if (rewardsError) throw rewardsError;
 
-      // 5. Fetch redemptions
+      
       const { data: redemptions, error: redemptionsError } = await supabase
         .from("redemptions")
         .select("id, reward_id, redeemed_at, status, points_used")
@@ -149,10 +149,10 @@ export function useCustomerData(user: any) {
 
       if (redemptionsError) throw redemptionsError;
 
-      // Normalize card status
+      
       const normalizedCardStatus = card.status?.toLowerCase().trim() === 'active' ? 'active' : 'inactive';
 
-      // Prepare the updated customer data
+      
       const updatedCustomerData: FullCustomerData = {
         ...defaultData,
         hasCard: true,
