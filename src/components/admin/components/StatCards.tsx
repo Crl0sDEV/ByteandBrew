@@ -78,130 +78,112 @@ const [cupsError, setCupsError] = useState<string | null>(null);
 
   // Fetch payment data
   useEffect(() => {
-    const fetchPaymentData = async () => {
-      try {
-        setPaymentLoading(true);
-        setPaymentError(null);
+    // Update fetchPaymentData
+const fetchPaymentData = async () => {
+  try {
+    setPaymentLoading(true);
+    setPaymentError(null);
 
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        const startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
 
-        switch (paymentTimeRange) {
-          case "7days":
-            startDate.setDate(today.getDate() - 7);
-            break;
-          case "30days":
-            startDate.setDate(today.getDate() - 30);
-            break;
-          case "90days":
-            startDate.setDate(today.getDate() - 90);
-            break;
-          case "year":
-            startDate.setFullYear(today.getFullYear() - 1);
-            break;
-        }
-
-        const formatDate = (date: Date) => {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          const day = String(date.getDate()).padStart(2, "0");
-          return `${year}-${month}-${day}`;
-        };
-
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .gte("created_at", formatDate(startDate))
-          .lte("created_at", today.toISOString())
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          const processedData = generateSampleData(startDate, today);
-          setPaymentData(processedData);
-        } else {
-          const processedData = processTransactionData(data, startDate, today);
-          setPaymentData(processedData);
-        }
-      } catch (err) {
-        console.error("Error fetching payment data:", err);
-        setPaymentError("Failed to load payment data");
-        const today = new Date();
-        const startDate = new Date();
+    switch (paymentTimeRange) {
+      case "7days":
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case "30days":
         startDate.setDate(today.getDate() - 30);
-        setPaymentData(generateSampleData(startDate, today));
-      } finally {
-        setPaymentLoading(false);
-      }
-    };
+        break;
+      case "90days":
+        startDate.setDate(today.getDate() - 90);
+        break;
+      case "year":
+        startDate.setFullYear(today.getFullYear() - 1);
+        break;
+    }
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", today.toISOString())
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    // Don't generate sample data - return empty array if no data
+    if (!data || data.length === 0) {
+      setPaymentData([]);
+    } else {
+      const processedData = processTransactionData(data, startDate, today);
+      setPaymentData(processedData);
+    }
+  } catch (err) {
+    console.error("Error fetching payment data:", err);
+    setPaymentError("Failed to load payment data");
+    setPaymentData([]); // Return empty array on error
+  } finally {
+    setPaymentLoading(false);
+  }
+};
 
     fetchPaymentData();
   }, [paymentTimeRange]);
 
   // Fetch points data
   useEffect(() => {
-    const fetchPointsData = async () => {
-      try {
-        setPointsLoading(true);
-        setPointsError(null);
+    // Similarly update fetchPointsData
+const fetchPointsData = async () => {
+  try {
+    setPointsLoading(true);
+    setPointsError(null);
 
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        const startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
 
-        switch (pointsTimeRange) {
-          case "7days":
-            startDate.setDate(today.getDate() - 7);
-            break;
-          case "30days":
-            startDate.setDate(today.getDate() - 30);
-            break;
-          case "90days":
-            startDate.setDate(today.getDate() - 90);
-            break;
-          case "year":
-            startDate.setFullYear(today.getFullYear() - 1);
-            break;
-        }
-
-        const formatDate = (date: Date) => {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          const day = String(date.getDate()).padStart(2, "0");
-          return `${year}-${month}-${day}`;
-        };
-
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .gte("created_at", formatDate(startDate))
-          .lte("created_at", today.toISOString())
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          const processedData = generateSampleData(startDate, today);
-          setPointsData(processedData);
-        } else {
-          const processedData = processTransactionData(data, startDate, today);
-          setPointsData(processedData);
-        }
-      } catch (err) {
-        console.error("Error fetching points data:", err);
-        setPointsError("Failed to load points data");
-        const today = new Date();
-        const startDate = new Date();
+    switch (pointsTimeRange) {
+      case "7days":
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case "30days":
         startDate.setDate(today.getDate() - 30);
-        setPointsData(generateSampleData(startDate, today));
-      } finally {
-        setPointsLoading(false);
-      }
-    };
+        break;
+      case "90days":
+        startDate.setDate(today.getDate() - 90);
+        break;
+      case "year":
+        startDate.setFullYear(today.getFullYear() - 1);
+        break;
+    }
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", today.toISOString())
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    // Don't generate sample data - return empty array if no data
+    if (!data || data.length === 0) {
+      setPointsData([]);
+    } else {
+      const processedData = processTransactionData(data, startDate, today);
+      setPointsData(processedData);
+    }
+  } catch (err) {
+    console.error("Error fetching points data:", err);
+    setPointsError("Failed to load points data");
+    setPointsData([]); // Return empty array on error
+  } finally {
+    setPointsLoading(false);
+  }
+};
 
     fetchPointsData();
   }, [pointsTimeRange]);
@@ -403,87 +385,57 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
   return data;
 };
 
-  const processTransactionData = (
-    data: any[],
-    startDate: Date,
-    endDate: Date
-  ) => {
-    const transactionsByDate: Record<string, TransactionData> = {};
+const processTransactionData = (
+  data: any[],
+  startDate: Date,
+  endDate: Date
+) => {
+  if (!data || data.length === 0) return [];
 
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
+  const transactionsByDate: Record<string, TransactionData> = {};
+
+  // Create date strings for all dates in the range
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    transactionsByDate[dateStr] = {
+      date: dateStr,
+      payments: 0,
+      payment_amount: 0,
+      points_earned: 0,
+      total_transactions: 0,
+      cups_sold: 0,
     };
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
 
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      const dateStr = formatDate(currentDate);
-      transactionsByDate[dateStr] = {
-        date: dateStr,
-        payments: 0,
-        payment_amount: 0,
-        points_earned: 0,
-        total_transactions: 0,
-        cups_sold: 0,
-      };
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+  // Process each transaction
+  data.forEach((transaction) => {
+    if (!transaction.created_at) return;
 
-    data.forEach((transaction) => {
-      if (!transaction.created_at) return;
+    const transactionDate = new Date(transaction.created_at);
+    const dateStr = transactionDate.toISOString().split('T')[0];
 
-      const transactionDate = new Date(transaction.created_at);
-      const date = formatDate(transactionDate);
-
-      if (!transactionsByDate[date]) return;
-
+    // Only process if within our date range
+    if (transactionsByDate[dateStr]) {
       const amount = parseFloat(transaction.amount) || 0;
       const points = parseFloat(transaction.points) || 0;
 
       if (transaction.type === "payment") {
-        transactionsByDate[date].payments += 1;
-        transactionsByDate[date].payment_amount += amount;
-        transactionsByDate[date].points_earned += points;
+        transactionsByDate[dateStr].payments += 1;
+        transactionsByDate[dateStr].payment_amount += amount;
+        transactionsByDate[dateStr].points_earned += points;
       }
 
-      transactionsByDate[date].total_transactions += 1;
-    });
-
-    return Object.values(transactionsByDate).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-  };
-
-  const generateSampleData = (
-    startDate: Date,
-    endDate: Date
-  ): TransactionData[] => {
-    const data: TransactionData[] = [];
-    const currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split("T")[0];
-      const paymentCount = Math.floor(Math.random() * 10) + 1;
-      const paymentAmount =
-        paymentCount * 100 + Math.floor(Math.random() * 500);
-      const pointsEarned = paymentCount * 10 + Math.floor(Math.random() * 50);
-
-      data.push({
-        date: dateStr,
-        payments: paymentCount,
-        payment_amount: paymentAmount,
-        points_earned: pointsEarned,
-        total_transactions: paymentCount,
-        cups_sold: Math.floor(Math.random() * 20) + 5,
-      });
-
-      currentDate.setDate(currentDate.getDate() + 1);
+      transactionsByDate[dateStr].total_transactions += 1;
     }
+  });
 
-    return data;
-  };
+  // Convert to array and sort by date
+  return Object.values(transactionsByDate).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+};
 
   const formatTooltipValue = (value: any, name: any) => {
     if (name === "Payment Amount") {
@@ -628,14 +580,18 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
         {/* Today's Sales Card */}
         <UICard className="border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
-            <CardTitle className="text-sm font-medium text-white">Today's Sales</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">
+              Today's Sales
+            </CardTitle>
             <ShoppingCart className="w-4 h-4 text-white" />
           </CardHeader>
           <CardContent className="bg-white rounded-b-lg">
             <div className="text-2xl font-bold text-[#4b8e3f]">
               ₱{stats.todaySales.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Total today sales</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total today sales
+            </p>
           </CardContent>
         </UICard>
 
@@ -648,7 +604,9 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
             <Users className="w-4 h-4 text-white" />
           </CardHeader>
           <CardContent className="bg-white rounded-b-lg">
-            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.activeMembers}</div>
+            <div className="text-2xl font-bold text-[#4b8e3f]">
+              {stats.activeMembers}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Total members</p>
           </CardContent>
         </UICard>
@@ -662,7 +620,9 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
             <Gift className="w-4 h-4 text-white" />
           </CardHeader>
           <CardContent className="bg-white rounded-b-lg">
-            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.totalRedemptions}</div>
+            <div className="text-2xl font-bold text-[#4b8e3f]">
+              {stats.totalRedemptions}
+            </div>
             <div className="text-sm text-muted-foreground mt-1">
               Total rewards redeemed
             </div>
@@ -672,12 +632,18 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
         {/* Cards Issued Card */}
         <UICard className="border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-[#a2c569] to-[#4b8e3f] rounded-t-lg">
-            <CardTitle className="text-sm font-medium text-white">Cards Issued</CardTitle>
+            <CardTitle className="text-sm font-medium text-white">
+              Cards Issued
+            </CardTitle>
             <CreditCard className="w-4 h-4 text-white" />
           </CardHeader>
           <CardContent className="bg-white rounded-b-lg">
-            <div className="text-2xl font-bold text-[#4b8e3f]">{stats.cardsIssued}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total cards issued</p>
+            <div className="text-2xl font-bold text-[#4b8e3f]">
+              {stats.cardsIssued}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total cards issued
+            </p>
           </CardContent>
         </UICard>
       </div>
@@ -696,7 +662,9 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
                   value={paymentTimeRange}
-                  onValueChange={(value) => setPaymentTimeRange(value as TimeRange)}
+                  onValueChange={(value) =>
+                    setPaymentTimeRange(value as TimeRange)
+                  }
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Select range" />
@@ -725,9 +693,13 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
               <div className="h-[400px] flex items-center justify-center">
                 <p>Loading payment data...</p>
               </div>
-            ) : paymentError && paymentData.length === 0 ? (
+            ) : paymentError ? (
               <div className="h-[400px] flex items-center justify-center text-red-500">
                 <p>{paymentError}</p>
+              </div>
+            ) : paymentData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>No payment data available for selected period</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
@@ -796,7 +768,9 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
                   value={pointsTimeRange}
-                  onValueChange={(value) => setPointsTimeRange(value as TimeRange)}
+                  onValueChange={(value) =>
+                    setPointsTimeRange(value as TimeRange)
+                  }
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Select range" />
@@ -825,9 +799,13 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
               <div className="h-[400px] flex items-center justify-center">
                 <p>Loading points data...</p>
               </div>
-            ) : pointsError && pointsData.length === 0 ? (
+            ) : pointsError ? (
               <div className="h-[400px] flex items-center justify-center text-red-500">
                 <p>{pointsError}</p>
+              </div>
+            ) : pointsData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>No points data available for selected period</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
@@ -889,14 +867,14 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle>Product Sales Distribution</CardTitle>
-                <CardDescription>
-                  Breakdown of sales by product
-                </CardDescription>
+                <CardDescription>Breakdown of sales by product</CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
                   value={productSalesTimeRange}
-                  onValueChange={(value) => setProductSalesTimeRange(value as TimeRange)}
+                  onValueChange={(value) =>
+                    setProductSalesTimeRange(value as TimeRange)
+                  }
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Select range" />
@@ -941,18 +919,22 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
                     fill="#8884d8"
                     dataKey="value"
                     nameKey="name"
-                    label={({ name, percent }) => 
-                      `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name}: ${(percent * 100).toFixed(0)}%`
+                    }
                   >
-                    {productSalesData.map((_entry,index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={COLORS[index % COLORS.length]} 
+                    {productSalesData.map((_entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
                       />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => [`₱${value.toLocaleString()}`, "Sales"]}
+                  <Tooltip
+                    formatter={(value: number) => [
+                      `₱${value.toLocaleString()}`,
+                      "Sales",
+                    ]}
                   />
                   <Legend />
                 </PieChart>
@@ -962,103 +944,99 @@ const generateSampleCupsData = (startDate: Date, endDate: Date): TransactionData
         </UICard>
 
         {/* Cups Sold Chart */}
-<UICard>
-  <CardHeader>
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div>
-        <CardTitle>Cups Sold Overview</CardTitle>
-        <CardDescription>
-          Number of cups sold each day
-        </CardDescription>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Select
-          value={cupsTimeRange}
-          onValueChange={(value) => setCupsTimeRange(value as TimeRange)}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Select range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7days">Last 7 days</SelectItem>
-            <SelectItem value="30days">Last 30 days</SelectItem>
-            <SelectItem value="90days">Last 90 days</SelectItem>
-            <SelectItem value="year">Last year</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={exportCupsCSV}
-          disabled={!cupsData.length}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Export
-        </Button>
-      </div>
-    </div>
-  </CardHeader>
-  <CardContent>
-    {cupsLoading ? (
-      <div className="h-[400px] flex items-center justify-center">
-        <p>Loading cups data...</p>
-      </div>
-    ) : cupsError && cupsData.length === 0 ? (
-      <div className="h-[400px] flex items-center justify-center text-red-500">
-        <p>{cupsError}</p>
-      </div>
-    ) : (
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart
-          data={cupsData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              });
-            }}
-            axisLine={false}
-            tickLine={false}
-            tickMargin={8}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tickMargin={8}
-          />
-          <Tooltip
-            formatter={(value) => [`${value} cups`, "Cups Sold"]}
-            labelFormatter={(label) => {
-              const date = new Date(label);
-              return date.toLocaleDateString("en-US", {
-                weekday: "short",
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              });
-            }}
-          />
-          <Legend />
-          <Bar
-            dataKey="cups_sold"
-            fill="#FF8042"
-            radius={[4, 4, 0, 0]}
-            name="Cups Sold"
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    )}
-  </CardContent>
-</UICard>
+        <UICard>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Cups Sold Overview</CardTitle>
+                <CardDescription>Number of cups sold each day</CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={cupsTimeRange}
+                  onValueChange={(value) =>
+                    setCupsTimeRange(value as TimeRange)
+                  }
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Select range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7days">Last 7 days</SelectItem>
+                    <SelectItem value="30days">Last 30 days</SelectItem>
+                    <SelectItem value="90days">Last 90 days</SelectItem>
+                    <SelectItem value="year">Last year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCupsCSV}
+                  disabled={!cupsData.length}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {cupsLoading ? (
+              <div className="h-[400px] flex items-center justify-center">
+                <p>Loading cups data...</p>
+              </div>
+            ) : cupsError && cupsData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center text-red-500">
+                <p>{cupsError}</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={cupsData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickMargin={8}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis axisLine={false} tickLine={false} tickMargin={8} />
+                  <Tooltip
+                    formatter={(value) => [`${value} cups`, "Cups Sold"]}
+                    labelFormatter={(label) => {
+                      const date = new Date(label);
+                      return date.toLocaleDateString("en-US", {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="cups_sold"
+                    fill="#FF8042"
+                    radius={[4, 4, 0, 0]}
+                    name="Cups Sold"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </UICard>
       </div>
     </div>
   );

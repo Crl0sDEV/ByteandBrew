@@ -81,18 +81,17 @@ interface LoyaltyTabProps {
   onCardReload: () => void;
 }
 
-export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
+export function LoyaltyTab({ cards, members, loading, onCardReload }: LoyaltyTabProps) {
   const [action, setAction] = useState<"issue" | "deactivate" | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null);
   const [scannedUid, setScannedUid] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectionMethod, setSelectionMethod] = useState<"member" | "scan">(
-    "member"
-  );
+  const [selectionMethod, setSelectionMethod] = useState<"member" | "scan">("member");
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [deactivationReason, setDeactivationReason] = useState("lost");
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [scanningActive, setScanningActive] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -123,14 +122,30 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
   );
 
   const handleScan = (uid: string) => {
+    if (!scanningActive) return;
+    
     setScannedUid(uid);
     const existingCard = cards.find((card) => card.uid === uid);
     if (existingCard) {
       setSelectedCard(existingCard);
       if (action === "issue") {
-        toast.error("This card is already registered to another member.");
+        toast.error(`This card is already registered to ${existingCard.profiles?.full_name || "another member"}`);
+        setScanningActive(false);
+      }
+    } else {
+      if (action === "issue") {
+        setScanningActive(false);
+        toast.success("This card is available for registration");
+      } else if (action === "deactivate" && selectionMethod === "scan") {
+        toast.error("Card not registered. Please scan a valid card.");
       }
     }
+  };
+
+  const resetScanner = () => {
+    setScanningActive(true);
+    setScannedUid(null);
+    setSelectedCard(null);
   };
 
   const handleIssueCard = async () => {
@@ -138,14 +153,11 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
 
     try {
       await onCardRegister(scannedUid, selectedMember.id);
-      toast.success(
-        `Card ${scannedUid} registered to ${selectedMember.full_name}`
-      );
+      toast.success(`Card ${scannedUid} registered to ${selectedMember.full_name}`);
       resetState();
+      onCardReload();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not register card"
-      );
+      toast.error(error instanceof Error ? error.message : "Could not register card");
     }
   };
 
@@ -153,20 +165,14 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
     if (!selectedCard || !currentUser) return;
 
     try {
-      await onCardDeactivate(
-        selectedCard.id, 
-        deactivationReason, 
-        currentUser.id
-      );
-      
+      await onCardDeactivate(selectedCard.id, deactivationReason, currentUser.id);
       toast.success("Card Deactivated", {
         description: `Card ${selectedCard.uid} has been deactivated (Reason: ${deactivationReason})`,
       });
       resetState();
+      onCardReload();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not deactivate card"
-      );
+      toast.error(error instanceof Error ? error.message : "Could not deactivate card");
     } finally {
       setShowDeactivateConfirm(false);
     }
@@ -177,6 +183,8 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
     setSelectedCard(null);
     setSelectedMember(null);
     setScannedUid(null);
+    setScanningActive(true);
+    setSelectionMethod("member");
   };
 
   if (loading) {
@@ -228,7 +236,7 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
         open={action !== null}
         onOpenChange={(open) => !open && resetState()}
       >
-        <DialogContent>
+        <DialogContent className="max-w-md md:max-w-xl">
           {action === "issue" && (
             <>
               <DialogHeader>
@@ -239,15 +247,46 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
               </DialogHeader>
 
               <div className="space-y-4">
-                <RFIDScanner onScan={handleScan} />
+                <RFIDScanner
+                  onScan={handleScan}
+                  active={scanningActive}
+                  onReset={resetScanner}
+                />
 
                 {scannedUid && (
                   <div className="p-3 border rounded-lg">
                     <p className="font-medium">Scanned Card: {scannedUid}</p>
-                    {selectedCard && (
-                      <p className="text-sm text-red-500 mt-1">
-                        Warning: This card is already registered
-                      </p>
+                    {selectedCard ? (
+                      <>
+                        <p className="text-sm text-red-500 mt-1">
+                          Warning: This card is already registered to{" "}
+                          {selectedCard.profiles?.full_name}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={resetScanner}
+                        >
+                          <Scan className="mr-2 h-4 w-4" />
+                          Scan Another Card
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-green-500 mt-1">
+                          This card is available for registration
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setScanningActive(true)}
+                        >
+                          <Scan className="mr-2 h-4 w-4" />
+                          Scan Again
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}
@@ -316,9 +355,10 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
 
               <Tabs
                 value={selectionMethod}
-                onValueChange={(value) =>
-                  setSelectionMethod(value as "member" | "scan")
-                }
+                onValueChange={(value) => {
+                  setSelectionMethod(value as "member" | "scan");
+                  resetScanner();
+                }}
                 className="mb-4"
               >
                 <TabsList>
@@ -403,11 +443,26 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <RFIDScanner onScan={handleScan} />
+                  <RFIDScanner
+                    onScan={handleScan}
+                    active={scanningActive}
+                    onReset={resetScanner}
+                  />
                   {scannedUid && !selectedCard && (
-                    <p className="text-red-500">
-                      Card not found. Please scan a registered card.
-                    </p>
+                    <div className="p-3 border rounded-lg bg-red-50">
+                      <p className="text-red-500">
+                        Card not registered. Please scan a valid card.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={resetScanner}
+                      >
+                        <Scan className="mr-2 h-4 w-4" />
+                        Try Again
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -462,7 +517,9 @@ export function LoyaltyTab({ cards, members, loading }: LoyaltyTabProps) {
               want to deactivate it?
               {selectedCard && (
                 <div className="mt-2">
-                  <p className="text-sm font-medium">Reason: {deactivationReason}</p>
+                  <p className="text-sm font-medium">
+                    Reason: {deactivationReason}
+                  </p>
                 </div>
               )}
             </DialogDescription>
