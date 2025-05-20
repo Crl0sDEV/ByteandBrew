@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Radio, Scan } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Radio, Scan } from "lucide-react";
 
 interface RFIDScannerProps {
   onScan: (uid: string) => void;
@@ -9,15 +9,18 @@ interface RFIDScannerProps {
   onReset?: () => void;
 }
 
-export function RFIDScanner({ onScan, active = true, onReset }: RFIDScannerProps) {
+export function RFIDScanner({
+  onScan,
+  active = true,
+  onReset,
+}: RFIDScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
-  const [lastScanned, setLastScanned] = useState('');
+  const [lastScanned, setLastScanned] = useState("");
 
-  // Sync with external active state
   useEffect(() => {
     if (!active) {
       setIsScanning(false);
-      setLastScanned('');
+      setLastScanned("");
     }
   }, [active]);
 
@@ -25,18 +28,16 @@ export function RFIDScanner({ onScan, active = true, onReset }: RFIDScannerProps
     if (!isScanning) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent default behavior for numeric keys during scan
-      if (e.key >= '0' && e.key <= '9') {
+      if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
-        setLastScanned(prev => prev + e.key);
+        setLastScanned((prev) => prev + e.key);
       }
-      
-      // Assuming reader sends Enter after UID
-      if (e.key === 'Enter') {
+
+      if (e.key === "Enter") {
         e.preventDefault();
         if (lastScanned.length > 0) {
           onScan(lastScanned);
-          setLastScanned('');
+          setLastScanned("");
           if (!active) {
             setIsScanning(false);
           }
@@ -44,14 +45,14 @@ export function RFIDScanner({ onScan, active = true, onReset }: RFIDScannerProps
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isScanning, lastScanned, onScan, active]);
 
   const toggleScanning = () => {
     if (isScanning) {
       setIsScanning(false);
-      setLastScanned('');
+      setLastScanned("");
     } else {
       setIsScanning(true);
       if (onReset) onReset();
@@ -67,13 +68,13 @@ export function RFIDScanner({ onScan, active = true, onReset }: RFIDScannerProps
             <h3 className="font-medium">RFID Scanner</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            {isScanning 
-              ? 'Scanning... (Place card near reader)' 
-              : 'Click start to begin scanning'}
+            {isScanning
+              ? "Scanning... (Place card near reader)"
+              : "Click start to begin scanning"}
           </p>
         </div>
-        <Button 
-          variant={isScanning ? 'destructive' : 'default'}
+        <Button
+          variant={isScanning ? "destructive" : "default"}
           onClick={toggleScanning}
           disabled={!active}
         >
@@ -90,7 +91,7 @@ export function RFIDScanner({ onScan, active = true, onReset }: RFIDScannerProps
           )}
         </Button>
       </div>
-      
+
       {lastScanned && (
         <div className="p-2 bg-muted/50 rounded text-sm">
           <span className="font-medium">Current input: </span>
