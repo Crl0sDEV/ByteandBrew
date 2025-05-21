@@ -35,7 +35,7 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
     try {
       setIsRefreshing(true)
 
-      // Fetch latest redemptions
+      
       const { data: latestRedemptions, error } = await supabase
         .from("redemptions")
         .select("*")
@@ -44,7 +44,7 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
 
       if (error) throw error
 
-      // Fetch reward details for the redemptions
+      
       const rewardIds = latestRedemptions
         .map((r) => r.rewardId)
         .filter((id, index, self) => id && self.indexOf(id) === index)
@@ -69,7 +69,7 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
         {} as Record<string, { name: string; description: string }>,
       )
 
-      // Combine redemptions with reward details
+      
       const enrichedRedemptions = latestRedemptions.map((r) => ({
         ...r,
         rewardName: r.rewardId ? rewardsMap[r.rewardId]?.name || "Unknown reward" : "No reward",
@@ -90,7 +90,7 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
     fetchRedemptions()
   }
 
-  // Load reward names for initial redemptions
+  
   useEffect(() => {
     const loadAllRewardNames = async () => {
       try {
@@ -131,9 +131,9 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
     loadAllRewardNames()
   }, [initialRedemptions])
 
-  // Set up automatic refresh
+  
   useEffect(() => {
-    // Set up subscription for real-time updates if userId is available
+    
     if (userId) {
       const subscription = supabase
         .channel("redemptions-changes")
@@ -146,8 +146,8 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
             filter: `userId=eq.${userId}`,
           },
           () => {
-            // When a change is detected, refresh the data
-            // Add a small delay to ensure the database has completed its operation
+            
+            
             if (refreshTimeoutRef.current) {
               clearTimeout(refreshTimeoutRef.current)
             }
@@ -159,7 +159,7 @@ export function RedemptionHistorySection({ redemptions: initialRedemptions, user
         )
         .subscribe()
 
-      // Fallback polling every 30 seconds in case subscription fails
+      
       const intervalId = setInterval(() => {
         fetchRedemptions()
       }, 30000)
