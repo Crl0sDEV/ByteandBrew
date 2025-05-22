@@ -8,7 +8,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuth = async () => {
-      // Get the session after OAuth redirect
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session?.user) {
@@ -18,7 +18,7 @@ export default function AuthCallback() {
       }
 
       try {
-        // Check if profile exists
+        
         const { data: existingProfile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -27,14 +27,14 @@ export default function AuthCallback() {
 
         if (profileError) throw profileError;
 
-        // If profile doesn't exist, create one
+        
         if (!existingProfile) {
           const { error: upsertError } = await supabase
             .from("profiles")
             .upsert({
               id: session.user.id,
               email: session.user.email,
-              role: "customer", // Default role
+              role: "customer", 
               full_name: session.user.user_metadata?.full_name || 'anonymous',
               created_at: new Date().toISOString()
             });
@@ -42,14 +42,14 @@ export default function AuthCallback() {
           if (upsertError) throw upsertError;
         }
 
-        // Get the final profile (either existing or newly created)
+        
         const { data: finalProfile } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", session.user.id)
           .single();
 
-        // Redirect based on role
+        
         navigate(finalProfile?.role === "admin" ? "/admin" : "/customer");
         
       } catch (error) {
