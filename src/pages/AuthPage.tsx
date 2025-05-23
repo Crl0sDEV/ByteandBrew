@@ -17,7 +17,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Password validation states
+  
   const [passwordErrors, setPasswordErrors] = useState({
     length: false,
     uppercase: false,
@@ -54,9 +54,9 @@ export default function AuthPage() {
     );
   };
 
-  // Common function to handle profile creation/checking
+  
   const handleUserProfile = async (userId: string, userEmail: string) => {
-    // Check if profile exists
+    
     const { data: existingProfile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
@@ -65,7 +65,7 @@ export default function AuthPage() {
 
     if (profileError) throw profileError;
 
-    // If profile doesn't exist, create one
+    
     if (!existingProfile) {
       const { error: upsertError } = await supabase
         .from("profiles")
@@ -94,7 +94,7 @@ export default function AuthPage() {
       }
 
       if (isRegister) {
-        // Registration flow
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -110,7 +110,7 @@ export default function AuthPage() {
           toast.success("Registration successful! Please check your email.");
         }
       } else {
-        // Login flow
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
