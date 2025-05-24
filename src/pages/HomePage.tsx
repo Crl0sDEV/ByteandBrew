@@ -10,7 +10,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { Star, Instagram, MapPin, Coffee, Wifi, Users } from "lucide-react";
-// Animation variants
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
