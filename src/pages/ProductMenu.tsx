@@ -53,7 +53,7 @@ export default function ProductMenu() {
 
   const categories = useMemo(() => getUniqueCategories(products), [products]);
 
-  // Calculate active filters count
+  
   useEffect(() => {
     let count = 0;
     if (selectedCategory !== "all") count++;
@@ -66,7 +66,7 @@ export default function ProductMenu() {
     setActiveFiltersCount(count);
   }, [selectedCategory, sortOption, priceFilter, temperatureFilter, sizeFilter, searchQuery]);
 
-  // Scroll visibility effect
+  
   useEffect(() => {
     const handleScroll = () => {
       setIsVisible(window.scrollY > 300);
@@ -80,7 +80,7 @@ export default function ProductMenu() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Fetch products
+  
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -103,11 +103,11 @@ export default function ProductMenu() {
     fetchProducts();
   }, []);
 
-  // Apply filters
+  
   useEffect(() => {
     let result = [...products];
 
-    // Search filter
+    
     if (searchQuery) {
       result = result.filter(p => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,24 +115,24 @@ export default function ProductMenu() {
       );
     }
 
-    // Category filter
+    
     if (selectedCategory !== "all") {
       result = result.filter((p) => p.category === selectedCategory);
     }
 
-    // Temperature filter
+    
     if (temperatureFilter !== "all") {
       result = result.filter((p) => p.temperature === temperatureFilter);
     }
 
-    // Size filter
+    
     if (sizeFilter !== "all") {
       result = result.filter(
         (p) => p.has_sizes && p.sizes && p.sizes.includes(sizeFilter)
       );
     }
 
-    // Price filter
+    
     if (priceFilter !== "all") {
       const [min, max] = priceFilter.split("-").map(Number);
       result = result.filter((p) => {
@@ -141,7 +141,7 @@ export default function ProductMenu() {
       });
     }
 
-    // Sort options
+    
     switch (sortOption) {
       case "price-asc":
         result.sort(
